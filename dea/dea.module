@@ -1,0 +1,1673 @@
+<?php
+
+function dea_init() {
+  global $language;
+  global $user;
+  // @TODO: This does not to be in some use.
+  // Remove it.
+  $user_preferred_language = $user ? user_preferred_language($user) : $language;
+  $language = $user_preferred_language;
+  if ($language->language != $user_preferred_language->language) {
+    $language->language = '$user_preferred_language->language';
+  }
+  module_load_include('inc', 'node', 'node.pages');
+
+  variable_set('DEA_USER_TYPE', end($user->roles));
+  drupal_add_js(drupal_get_path("module", "dea") . "/load_email_form.js");
+
+	
+	
+	// chain init
+	drupal_add_js(drupal_get_path('module', 'dea_chain') . '/dea_chain.js');
+  $args = arg();
+	if(user_is_logged_in() && $args[0] == 'user' && empty($args[1])) {
+		
+		if($user->profile_user_type !='SCA')
+		{
+				
+			check_access_permission_for_redirection();
+		}
+		else
+		{
+			$temp_user = $user;
+			if(isset($_SESSION['current_chain_user'])) {
+				$temp_user = user_load(array('uid' => $_SESSION['current_chain_user']));
+			}
+			$nidWel = db_result(db_query('SELECT n.nid from {node} AS n LEFT JOIN  content_type_category_fields AS cf ON cf.nid =  n.nid 
+						 where uid = %d and field_category_type_nid = 3 and type="category_fields" ', $temp_user->uid));
+			if (!empty($nidWel)) {
+				$url = sprintf('node/%u/edit/Welcome', $nidWel);
+			} 
+			else {
+				$url = sprintf('node/%u/edit/Welcome', 3);
+			}
+			drupal_goto($url);
+		}
+
+	}
+	if($user->profile_user_type !='SCA')
+	{
+		check_access_permission_for_user();
+	}
+	// init for dea forms
+	if (arg(3) == 'News') {
+    drupal_add_js(drupal_get_path("module", "dea_forms") . "/news_edit_reload.js");
+  } 
+  elseif (arg(3) == 'Welcome') {
+    drupal_add_js(drupal_get_path("module", "dea_forms") . "/popups.js");
+  }
+  
+  drupal_add_js(drupal_get_path("module", "dea_translation") . "/language_onchange.js");
+	//load js file for menu conifg 
+	drupal_add_js(drupal_get_path('module', 'dea_menu_config_tab') . '/dea_menu_config_tab.js');
+	//load js file for menu overview
+	drupal_add_js(drupal_get_path('module', 'dea_menu_overview_tab') . '/dea_menu_overview_tab.js');
+	//load js file for menu setttings 
+	drupal_add_js(drupal_get_path('module', 'dea_settings') . '/dea_settings.js');
+	
+	// load js files for translation 
+  drupal_add_js(drupal_get_path("module", "dea_translation") . "/test.js");
+  drupal_add_js(drupal_get_path("module", "dea_translation") . "/language_onchange.js");
+	
+	
+	//set the session values for the MSA login user
+	//if($user->profile_user_type=="MSA" || $user->profile_user_type=="SCA" )
+	//{
+		if($user->profile_user_type=="MSA" &&  !isset($_SESSION['current_chain_user']))
+		{
+			$_SESSION['current_chain_user'] = $user->uid;
+		}
+		if(!isset($_SESSION['current_chain_nid']))
+		{
+			$_SESSION['current_chain_nid'] = dea_get_current_user_dea_type_nid2();
+		}
+	//}
+	
+
+	////
+/*	global $user;
+	
+	
+	$chain_user = db_result(db_query("select count(*) from {chain_users} where `ca_uid` = %d ",  $user->uid));
+	if($chain_user>0)
+	{
+		$roles_user = array();
+		foreach ($user->roles as $userroles) {
+			$roles_user[] = $userroles;
+		}
+		
+		$result_nid = 'SELECT n.nid FROM {node} n WHERE n.title = "%s" ';
+		//Get user category ex: school,hotel 
+		$nid = db_result(db_query($result_nid, $roles_user[1]));
+		
+		$usernodes1 = db_query("SELECT * FROM {content_field_dea_type} WHERE field_dea_type_nid = %d", $nid);
+		
+		$user_type_array = array();
+			while ($usernodes_nid = db_fetch_object($usernodes1)) {
+			$relevent_node = node_load($usernodes_nid->nid);
+			$user_type_array[] = $relevent_node->title;
+		}
+	
+		$query2 = 'select * from {node}  where `type` = "%s" ORDER BY nid ASC ';
+		$result2 = db_query($query2, 'category');
+		while ($res = db_fetch_object($result2)) {
+			if (in_array($res->title, $user_type_array) && $res->title !='Sub Catalog') {
+				$edit = db_result(db_query("select edit_store_admin from {chain_access_config} where `category_name`='%s'  and `ca_nid` = %d ", $res->title, $_SESSION['current_chain_nid']));
+				if($edit)
+				{
+					if($res->nid==3)
+					{
+						 $nidWel = db_result(db_query('SELECT n.nid from {node} AS n LEFT JOIN  content_type_category_fields AS cf ON cf.nid =  n.nid  where uid = %d and field_category_type_nid = 3 and type="category_fields" ', $user->uid));
+						 if (!empty($nidWel)) {
+								return array('path' =>  $base_url . "/node/" . $nidWel . "/edit/Welcome");
+						} else {
+								return array('path' => $base_url . "/node/3/edit/Welcome");
+						}
+					}
+					else
+					{
+						$nidRet = db_result(db_query('SELECT n.nid from {node} AS n LEFT JOIN  content_type_category_fields AS cf ON cf.nid =  n.nid 
+						where uid = %d and field_category_type_nid = %d and type="category_fields" ', $user->uid,$res->nid));
+						return array('path' =>  $base_url . "/node/" . $res->nid . "/edit/".$res->title);
+					}
+
+				}
+				
+			}	
+		}
+
+	}
+	else
+	{
+		 $nidWel = db_result(db_query('SELECT n.nid from {node} AS n LEFT JOIN  content_type_category_fields AS cf ON cf.nid =  n.nid 
+		       where uid = %d and field_category_type_nid = 3 and type="category_fields" ', $user->uid));
+
+		if (!empty($nidWel)) {
+				return array('path' =>  $base_url . "/node/" . $nidWel . "/edit/Welcome");
+		} else {
+				return array('path' => $base_url . "/node/3/edit/Welcome");
+		}
+	}*/
+	
+	 
+
+
+	
+	
+	
+}
+
+function dea_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+
+	global $user;
+    if ($op == 'delete') {
+
+        //update the parent node when delete the translate node
+        $tnid = $node->tnid;
+        if ($tnid) {
+            $node1 = node_load($tnid);
+            $created = strtotime("now");
+            $node1->changed = "changed";
+            node_save($node1);
+        }
+
+
+        if ($node->uid) {
+            $delete_stamps = variable_get('dea_delete', array());
+            $delete_stamps[$node->uid] = time();
+            watchdog('dea', 'Saving timestamp for delete: ' . $delete_stamps[$node->uid] . ' for uid: ' . $node->uid, array());
+            variable_set('dea_delete', $delete_stamps);
+        }
+		 if ($node->field_category_type[0]['nid'] == 615) {
+			 
+			  $sql = "select nid from {content_type_category_fields} where `field_main_catalog_value` = %d  ";
+			  $result = db_query($sql, $node->nid);
+			  
+			  while ($s = db_fetch_object($result)) {
+				  node_delete($s->nid);
+			 }
+			 
+		 }
+		
+    }
+    // @TODO: Move this into the _submit handler of 'dea_chain_main_category_form_validate'. 
+    // See #6813
+
+     else if ($op == "presave" && $node->type == "main_category") {
+         $newnode = clone $node;
+
+					//remove inline styles from body
+					$tmp_node->body =   preg_replace('/<(\w+) [^>]+>/', '<$1>', $tmp_node->body);
+         //setting the datetime when updating the news RSS
+         $preNewsFeed = $r->field_news_feed[0][value];
+         $curNewsFeed = $node->field_news_feed[0][value];
+
+         if ($preNewsFeed != $curNewsFeed) {
+             $newnode->field_rss_date[0][value] = strtotime("now");
+         }
+
+         //if chain user logged set user id to selected store user id
+         if (isset($_SESSION['current_chain_user']) && arg(0) != "chain") {
+			 		if($r->uid!="" || isset($r->uid))
+	         {
+						  $newnode->uid = $r->uid;
+					 }
+			 		else
+					{
+			 			$newnode->uid =  $_SESSION['current_chain_user'];
+         	}
+				 }
+
+         //$newnode->field_location[0]['location_settings']['form']['fields']['latitude']['default'] = 57.7073484; 
+         //$newnode->field_location[0]['location_settings']['form']['fields']['longitude']['default'] = 11.9703770; 
+         $lid = db_result(db_query("select source from {location} where `lid`= %d ", $newnode->field_location[0]['lid']));
+         if ($lid != 1) {
+					 
+             $address = $node->field_location[0]['street'] . " " . $node->field_location[0]['additional'] . " " . $node->field_location[0]['postal_code'] . " " . $node->field_location[0]['city'] . " " . $node->field_location[0]['country'];
+             $coords = geocode($address);
+
+             $newnode->field_location[0]['locpick']['user_latitude'] = $coords['lat'];
+             $newnode->field_location[0]['locpick']['user_longitude'] = $coords['lng'];
+
+             $newnode->field_location[0]['location_settings']['form']['fields']['source']['default'] = 2;
+
+         }
+         $node = $newnode;
+
+     } 
+    else if ($op == "presave" && $node->type == "category_fields") {
+			
+			
+			$dea_type = dea_get_current_user_dea_type_nid();
+      if (isset($_SESSION['current_chain_user'])) {
+            
+				if($node->uid!="" || isset($node->uid))
+				{
+	        $node->uid = $node->uid;
+				}
+				else {
+					$node->uid =  $_SESSION['current_chain_user'];
+				}
+				
+         $node->uid = $_SESSION['current_chain_user'];
+         
+				 $role = implode(', ', array_slice($user->roles, 1));
+				 $fld_role = 'field_' . $role;
+				 $node->$fld_role = array(
+							"value" => $dea_type,
+					);
+        }
+				//remove inline styles from body
+				$node->body =   preg_replace('/<(\w+) [^>]+>/', '<$1>', $node->body);
+				//die_r($node);
+				// saving main id 
+				
+				
+    } else if (($op == "insert" || $op == "update" ) && $node->type == "category_fields") {
+
+        $role = implode(', ', array_slice($user->roles, 1));
+        //$nid_role = db_result(db_query('SELECT nid from {node} where `title` = "%s" and type="dea_type" ', $role));
+
+
+        $nid = $node->nid;
+		
+			if($op == "insert")
+			{
+				$grants = array('realm'=>'content_access_rid','gid'=>7,'grant_view'=>1,'grant_update'=>0,'grant_delete'=>0);
+				node_access_write_grants($node,$grants);
+			}
+
+        $fldType = "field_" . $role;
+        $nidType = $node->$fldType;
+
+        $typenid = $nidType['value'];
+
+
+        $type = $node->field_category_type[0]['nid'];
+        if ($type == 354) {
+			
+			if($op=="insert")
+			{	
+				$query = "UPDATE   {node} SET 	changed  = '%d'  WHERE 	nid = '%d'  ";
+ 				$result = db_query($query,$node->created,$node->nid);	
+				if (!$result)
+					watchdog('update news time', 'no updated news time', array('!changed' => $node->created, '!nid' => $node->nid));
+			}
+
+            //echo $role." ";
+            $fldType = "field_" . $role;
+            $nidType = $node->$fldType;
+
+            $nid = $nidType['value'];
+		
+
+
+            //echo $nid['value'];die();
+
+
+
+            variable_set('push_type', 'news');
+
+            $query = 'select tnid from {node} where `nid` = %d ';
+            $result = db_query($query, $nid);
+            $row_tnid = db_fetch_object($result);
+
+            if ($row_tnid->tnid)
+                $nid = $row_tnid->tnid;
+
+
+            //check chain user
+            $sca_nid = db_result(db_query("select sca_nid from {chain_users}  where `ca_nid`=%d ", $nid));
+            if ($sca_nid != "")
+                $nid = $sca_nid;
+
+            $n_nid = $node->nid;
+
+
+
+            $query = 'select tnid from {node} where `nid` = %d ';
+            $result = db_query($query, $n_nid);
+            $row_n_tnid = db_fetch_object($result);
+
+            if ($row_n_tnid->tnid)
+                $n_nid = $row_n_tnid->tnid;
+
+
+            variable_set('push_news_id', $n_nid);
+            $imp = $node->field_important[0][value];
+
+
+
+            if ($imp == "Enable") {
+                //sendPushNotification($node, $nid);
+            }
+        } else if ($type == 616) {
+            if ($node->body != "") {
+                variable_set('push_type', 'offers');
+
+                $fldType = "field_" . $role;
+                $nidType = $node->$fldType;
+
+                $nid = $nidType['value'];
+
+                $query = 'select tnid from {node} where `nid` = %d ';
+                $result = db_query($query, $nid);
+                $row_tnid = db_fetch_object($result);
+
+                if ($row_tnid->tnid)
+                    $nid = $row_tnid->tnid;
+
+                //check chain user
+                $sca_nid = db_result(db_query("select sca_nid from {chain_users}  where `ca_nid`=%d ", $nid));
+                if ($sca_nid != "")
+                    $nid = $sca_nid;
+
+                $n_nid = $node->nid;
+
+
+
+                $query = 'select tnid from {node} where `nid` = %d ';
+                $result = db_query($query, $n_nid);
+                $row_n_tnid = db_fetch_object($result);
+
+                if ($row_n_tnid->tnid)
+                    $n_nid = $row_n_tnid->tnid;
+
+                variable_set('push_offer_id', $n_nid);
+
+                //sendPushNotification($node, $nid);
+            }
+        }
+    }
+
+    if (($op == "insert" || $op == "update" ) && ($node->type == "category_fields" || $node->type == "main_category" || $node->type == "chain_welcome")) {
+        if (arg(1) == "add" && arg(4) == "translate") {
+            $lang = $_GET['language'];
+            $tnid = $_GET['translation'];
+            $catg = $_GET['category'];
+            $main_catalog = $_GET['catalog'];
+						$room = $_GET['room'];
+
+            $result = db_query("select nid from {node} where tnid = %d and language = '%s'", $tnid, $lang);
+            while ($field = db_fetch_object($result)) {
+                $node_id = $field->nid;
+            }
+            $dest_url = 'node/' . $node_id . '/edit/' . arg(3) . '/translate?language=' . $lang . '&category=' . $catg . '&catalog=' . $main_catalog. '&room=' . $room;
+        }
+ 
+        else if (arg(1) == '') {
+            $dest_url = arg(0);
+        } else if (arg(2) == '') {
+            $dest_url = arg(0) . '/' . arg(1);
+        } else if (arg(0) == 'chain' && arg(2) == "welcome") {
+			$chainWel = db_result(db_query('SELECT nid from {node} where uid = %d and type="chain_welcome" ', $user->uid));
+			$dest_url = arg(0) . '/' . $chainWel . '/' . arg(2);
+		}
+		else if (arg(3) == '') {
+            $dest_url = arg(0) . '/' . arg(1) . '/' . arg(2);
+        } else if (arg(4) == '') {
+					
+            $catalog = $_GET['catalog'];
+            if ($catalog)
+                $dest_url = arg(0) . '/' . arg(1) . '/' . arg(2) . '/' . arg(3) . '?catalog=' . $catalog;
+            else
+                $dest_url = arg(0) . '/' . arg(1) . '/' . arg(2) . '/' . arg(3);
+            //$dest_url = arg(0) . '/' . arg(1) . '/' . arg(2) . '/' . arg(3);
+            if (arg(1) == 3 || arg(1) == 2198) {
+                global $user;
+                $temp_user = $user;
+                if (isset($_SESSION['current_chain_user'])) {
+                    $temp_user = user_load(array('uid' => $_SESSION['current_chain_user']));
+                }
+
+                $nidWel = db_result(db_query('SELECT n.nid from {node} AS n LEFT JOIN  content_type_category_fields AS cf ON cf.nid =  n.nid 
+		       where uid = %d and field_category_type_nid = %d and type="category_fields" and   field_main_id_value= %d ', $temp_user->uid, arg(1),$_SESSION['current_chain_nid']));
+                $dest_url = arg(0) . '/' . $nidWel . '/' . arg(2) . '/' . arg(3);
+            }
+						
+        } else if (arg(5) == '') {
+            $lang = $_GET['language'];
+            $catg = $_GET['category'];
+            $main_catalog = $_GET['catalog'];
+						$room = $_GET['room'];
+            $dest_url = arg(0) . '/' . arg(1) . '/' . arg(2) . '/' . arg(3) . '/' . arg(4) . '?language=' . $lang . '&category=' . $catg . '&catalog=' . $main_catalog. '&room=' . $room;
+        } 
+		else {
+            $lang = $_GET['language'];
+            $dest_url = arg(0) . '/' . arg(1) . '/' . arg(2) . '/' . arg(3) . '/' . arg(4) . '/' . arg(5) . '?language=' . $lang;
+        }
+				
+				
+				//if(arg(0)=="chain" && ( arg(2)=="mainType" || arg(3)=="mainType" ) )
+				if(arg(0)=="chain" &&  arg(2)=="mainType"  )
+				{
+					$dest_url = "chain/access/config?branch=".$node->tnid;
+				}
+				
+        $_REQUEST['destination'] = $dest_url;
+    }
+}
+
+function dea_perm() {
+    $sql = "select * from {node} where `type` = '%s'  ";
+    $result = db_query($sql, 'dea_type');
+    $ary = array();
+    while ($s = db_fetch_object($result)) {
+        $ary[] = "menu access " . $s->title;
+    }
+    return $ary;
+}
+
+function get_user_app_store_page() {
+    global $user;
+    global $language;
+
+    $result = db_query("SELECT nid FROM {node} WHERE uid = %d AND language = '%s'", $user->uid, $language->language);
+
+    while ($field = db_fetch_object($result)) {
+        return $field->nid;
+        exit;
+    }
+}
+
+function dea_menu() {
+
+    $items['dropdown/dependent_dropdown/callback'] = array(
+        'page callback' => 'dea_dropdown_callback',
+        'access callback' => TRUE,
+        'file' => 'dependent_dropdown.inc',
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['dea/update-category-fields'] = array(
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('dea_update_category_fields_form'),
+      'access callback' => 'dea_user_access',
+      'type' => MENU_CALLBACK,
+    );
+
+    return $items;
+}
+
+function dea_user_access() {
+  global $user;
+  if ($user->uid == 1) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+function dea_dropdown_callback1() {
+    //drupal_goto("node/354/edit/News");
+    return true;
+}
+
+function dea_menu_alter(&$items) {
+    //print_r(&$items);
+}
+
+function user_menu_access($arguments) {
+
+    foreach (func_get_args() as $argument) {
+        if (user_access($argument)) {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+function dea_menu_view_callback() {
+    $type = arg(0);
+    $node = node_load(arg(2));
+}
+
+function dea_node_access_records($node) {
+
+    $grants = array();
+
+    $grants[] = array(
+        'realm' => 'all',
+        'gid' => 1,
+        'grant_view' => 0,
+        'grant_update' => 0,
+        'grant_delete' => 0,
+        'priority' => 0,
+    );
+
+    switch ($node->type) {
+        case 'school':
+            $grants[] = array(
+                'realm' => 'school_owner',
+                'gid' => $node->uid,
+                'grant_view' => 1,
+                'grant_update' => 1,
+                'grant_delete' => 1,
+                'priority' => 0,
+            );
+            break;
+        case 'special':
+//      $query = 'select * from {content_type_special} where `nid`=%d;';
+//      $result = db_query($query,$node->nid) or die("Could not get school data for special.");
+//      $s = db_fetch_object($result);
+//      $rest = node_load($s->field_special_school_nid);
+//
+//      $grants[] = array(
+//        'realm' => 'school_owner',
+//        'gid' => $rest->uid,
+//        'grant_view' => 1,
+//        'grant_update' => 1,
+//        'grant_delete' => 1,
+//        'priority' => 1,
+//      );
+            $grants[] = array(
+                'realm' => 'school_owner',
+                'gid' => $node->uid,
+                'grant_view' => 1,
+                'grant_update' => 1,
+                'grant_delete' => 1,
+                'priority' => 0,
+            );
+            break;
+        case 'category':
+//      $query = 'select * from {content_type_category} where `nid`=%d;';
+//      $result = db_query($query,$node->nid) or die("Could not get school data for category.");
+//      $c = db_fetch_object($result);
+//      $rest = node_load($c->field_category_school_nid);
+//
+//      $grants[] = array(
+//        'realm' => 'school_owner',
+//        'gid' => $rest->uid,
+//        'grant_view' => 1,
+//        'grant_update' => 1,
+//        'grant_delete' => 1,
+//        'priority' => 1,
+//      );
+            $grants[] = array(
+                'realm' => 'school_owner',
+                'gid' => $node->uid,
+                'grant_view' => 1,
+                'grant_update' => 1,
+                'grant_delete' => 1,
+                'priority' => 0,
+            );
+            break;
+        case 'menu':
+            $grants[] = array(
+                'realm' => 'school_owner',
+                'gid' => $node->uid,
+                'grant_view' => 1,
+                'grant_update' => 1,
+                'grant_delete' => 1,
+                'priority' => 0,
+            );
+            break;
+        default:
+        // Nothing
+    }
+
+    return $grants;
+}
+
+function dea_node_grants($account, $op) {
+    $access = array();
+
+    $access['school_owner'][] = $account->uid;
+
+    return $access;
+}
+
+function pre_ren_categories($element) {
+    global $user;
+    $role = implode(', ', array_slice($user->roles, 1));
+    $options = array();
+    $nid = db_result(db_query('SELECT nid from {node} where `title` = "%s" and type="dea_type" ', $role));
+
+    $query = 'select * from {node} as n LEFT JOIN {content_field_dea_type} as t ON n.nid = t.nid   where `type` = "%s"  and field_dea_type_nid = "%d" ';
+    $result = db_query($query, 'category', $nid) ;
+
+    while ($res = db_fetch_object($result)) {
+        $options[$res->nid] = $res->title;
+    }
+    $element['nid']['nid']['#options'] = $options;
+    return $element;
+}
+
+function pre_ren_languages($element) {
+    global $user;
+    $options = array();
+    if ($user->uid == 1) {
+
+        $query = 'select * from {languages} ';
+        $result = db_query($query);
+
+        while ($res = db_fetch_object($result)) {
+            $options[$res->language] = $res->name;
+        }
+    } else {
+        $nid = db_result(db_query('SELECT nid from {node} where `uid` = %d and type="profile_lang" ', $user->uid));
+
+
+        $query = 'select * from {content_field_site_langugae} as sl LEFT JOIN {languages} as l ON l.language = sl.field_site_langugae_value   where sl.nid = %d ';
+        $result = db_query($query, $nid);
+
+        while ($res = db_fetch_object($result)) {
+            $options[$res->language] = $res->name;
+        }
+    }
+
+
+
+    $element['#options'] = $options;
+    return $element;
+}
+
+function my_process_function($form) {
+    //$form['field_category_type']['nid']['nid']['#disabled'] = TRUE;	
+}
+
+function make_option2_disabled($form_select) {
+    $form_select['#attributes']['disabled'] = 'disabled';
+    return $form_select;
+}
+
+function dea_form_alter(&$form, $form_state, $form_id) {
+
+	global $user;
+	$temp_user = $user;
+	if (isset($_SESSION['current_chain_user'])) {
+        	$temp_user = user_load(array('uid' => $_SESSION['current_chain_user']));
+    	}
+    $node = node_load(arg(1));
+    $type = $node->field_category_type[0]['nid'];
+
+    if (arg(2) == 'delete' && ($type == 1667 || $type == 355 || $type == 776)) {
+        $form['actions']['cancel'] = array(
+            '#type' => 'button',
+            '#value' => t('Cancel'),
+            '#attributes' => array(
+                'onclick' => "javascript:history.go(-1); return false;",
+            ),
+        );
+    }
+
+    $form['language']['#pre_render'] = array(pre_ren_languages);
+
+    
+    $role = implode(', ', array_slice($user->roles, 1));
+    $nid_role = db_result(db_query('SELECT nid from {node} where `title` = "%s" and type="dea_type" ', $role));
+
+
+    if ($form['language']['#default_value'] != "") {
+
+        $master_selection = $form['language']['#default_value'];
+    } else { 
+		  	
+    	
+
+        $form['language']['#default_value'] = $temp_user->language;
+        $master_selection = !empty($form_state['values']['language']) ? $form_state['values']['language'] : t($temp_user->language);
+    }
+
+    if ($form_id == "profile_lang_node_form") {
+        $form['menu']['#access'] = FALSE;
+        $form['author']['#access'] = FALSE;
+        $form['revision_information']['#access'] = FALSE;
+        $form['options']['#access'] = FALSE;
+        $form['title']['#default_value'] = 'app languages';
+        $form['title']['#prefix'] = '<div style="display:none;">';
+        $form['title']['#suffix'] = '</div>';
+    }
+    if ($form_id == "category_fields_node_form" && $user->name != "admin") {
+
+
+		//check_access_permission_for_user();
+        if (!$form['language']['#default_value'])
+            $form['language']['#default_value'] = 'en';
+
+
+        // set dea type to current user  and hide dropdown
+        $form['field_cat_dea_type']['#default_value'][0]['nid'] = $nid_role;
+        $form['field_cat_dea_type']['#prefix'] = '<div style="display:none;">';
+        $form['field_cat_dea_type']['#suffix'] = '</div>';
+				
+				//set value to the main id field_main_id[0][value]
+				//if($temp_user->profile_user_type=="SCA" || $temp_user->profile_user_type=="MSA")
+				if(isset($_SESSION['current_chain_nid']))
+				{
+					$main_id = $_SESSION['current_chain_nid'];
+				}
+				else
+				{
+						$main_id = dea_get_current_user_dea_type_nid2();
+				}
+
+				$form['field_main_id'][0]['#default_value']['value']  = $main_id;
+        $form['field_main_id']['#prefix'] = '<div style="display:none;">';
+        $form['field_main_id']['#suffix'] = '</div>';
+
+        //disable the ckeditor in offers
+        if (arg(3) == "Offers" || arg(3) == "Menu"  ) {
+            $form['body_field']['body']['#wysiwyg'] = FALSE;
+        }
+
+        $form['language']['#ahah'] = array(
+            'path' => 'dropdown/dependent_dropdown/callback',
+            'wrapper' => 'dependent-dropdown-wrapper',
+                // 'event' => 'change', // default value: does not need to be set explicitly.
+        );
+
+
+        if (arg(3) == "My-Facilities") {
+            $form['title']['#value'] = "my facilities";
+            $form['title']['#prefix'] = '<div style="display:none;">';
+            $form['title']['#suffix'] = '</div>';
+            $form['body_field']['body']['#wysiwyg'] = FALSE;
+            $form['body_field']['body']['#prefix'] = '<div style="display:none;">';
+            $form['body_field']['body']['#suffix'] = '</div>';
+        }
+				
+				if (arg(3) == "Area-Map") {
+					$form['title']['#default_value'] = 'area map';
+				}
+
+        $argNodeTitle = arg(3);
+        if ($argNodeTitle == "Contact" && $nid_role=="School" )
+            $argNodeTitle = "Personnel-Contact";
+		else if ($argNodeTitle == "Contact" && $nid_role=="Hotel")
+			$argNodeTitle = "Email";
+
+        $argNodeTitle = str_replace("-", " ", $argNodeTitle);
+
+
+
+        $panTitle = db_result(db_query('SELECT title from {node} where `nid` = %d and type="panel" ', $argNodeId));
+        $catNid = db_result(db_query('SELECT nid from {node} where `title` = "%s" and type="category" ', $argNodeTitle));
+
+
+        $form['field_category_type']['#default_value'][0]['nid'] = $catNid;
+
+
+
+        $form['field_category_type']['#pre_render'] = array(pre_ren_categories);
+
+		if($catNid==615 || $catNid==1667)
+			$form['title']['#maxlength'] = 35;
+		else
+        	$form['title']['#maxlength'] = 25;
+        $form['field_' . $role] = array(
+            '#tree' => TRUE,
+            '#prefix' => '<div id="dependent-dropdown-wrapper">',
+            '#suffix' => '</div>',
+        );
+
+        $form['field_' . $role]['value'] = array(
+            '#type' => 'select',
+            '#title' => t($role),
+            '#required' => true,
+            '#options' => _ahah_example_get_second_dropdown_options2($master_selection),
+						'#default_value' => $_SESSION['current_chain_nid'],
+        );
+				
+				
+				
+				
+        $form['#validate'][] = 'dea_validate_form';
+
+		
+		
+		// clear the title and description in node translation 
+		
+		if(arg(3)!="Welcome" && arg(3) !="News" && arg(1)=="add")
+		{
+			//$form['title']['#value'] = "";
+			//$form['body_field']['body']['#value'] ="";
+
+		}
+		
+		
+		
+		
+    }
+    if ($form_id == "main_category_node_form") {
+        $form['field_booking_email_body'][0]['value']['#wysiwyg'] = FALSE;
+        //$form['field_booking_email_body'][0]['#wysiwyg'] = FALSE;
+        $form['field_booking_email_body'][0]['value']['format'] = array();
+        // $form['#wysiwyg'] = false;
+
+        $form['field_category_dea_type']['#default_value'][0]['nid'] = $nid_role;
+        /*        $form['field_category_dea_type']['#prefix'] = '<div style="display:none;">';
+          $form['field_category_dea_type']['#suffix'] = '</div>'; */
+
+        $form['field_rss_date']['#prefix'] = '<div style="display:none;">';
+        $form['field_rss_date']['#suffix'] = '</div>';
+        $form['#validate'][] = 'dea_main_category_validate';
+    }
+
+    if ($form_id == "chain_welcome_node_form") {
+		  $form['field_not_all_stores_text']['#prefix'] = '<div id="not_all_stores_text_dev">';
+      $form['field_not_all_stores_text']['#suffix'] = '</div>'; 
+			$form['buttons']['#weight'] =  150;
+    }
+	if ($form_id == "overview_access_form") {
+		//die('<pre>'.print_r($form,true).'</pre>');
+		$form['not_all_stores_text']['#default_value']['#wysiwyg'] = FALSE;
+	}
+
+
+
+
+
+    if ($form_state['ahah_submission']) {
+        // Clear the form errors.  We don't need to show any validation errors if this is an ahah submit, not a final submit
+        drupal_get_messages('error');
+        // Clear the form error state.
+        form_set_error(null, '', true);
+    }
+    $form['#submit'][] = 'dea_node_form_submit';
+}
+
+function dea_node_form_submit($form, &$form_state) {
+    if (!empty($form_state['ahah_submission'])) {
+        return;
+    }
+}
+
+function dea_check_welcome_validate($form, &$form_state) {
+    //die('<pre>'.print_r($form_state,true).'</pre>');
+    if (!$form_state[values][nid]) {
+
+        $uid = $form['uid']['#value'];
+
+        $welcomeCnt = db_result(db_query("select count(*) from {node} where `type`='%s'  and `uid` = %d ", 'welcome', $uid));
+        //echo $welcomeCnt;die();
+        if ($welcomeCnt >= 1) {
+            //echo "a";die();
+            form_set_error('', t('Exceeded maximum Welcome!'));
+        }
+    }
+}
+
+function dea_check_personnel_validate($form, &$form_state) {
+    $phone = $form_state['values']['field_personnel_phone'][0]['value'];
+    $email = $form_state['values']['field_personnel_email'][0]['value'];
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) && $email != "") {
+        form_set_error('field_personnel_email', t('Invalid Email Address!'));
+    }
+    if (!is_numeric($phone) && $phone != "") {
+        form_set_error('field_personnel_phone', t('Invalid Phone Number!'));
+    }
+}
+
+function _ahah_example_get_second_dropdown_options2($key = '') {
+
+
+    global $user;
+    $temp_user = $user;
+    if (isset($_SESSION['current_chain_user'])) {
+        $temp_user = user_load(array('uid' => $_SESSION['current_chain_user']));
+    }
+
+    $uid = $temp_user->uid;
+	
+    $query = 'select language from {languages}  ';
+    $result = db_query($query);
+    $options = array();
+    $role = implode(', ', array_slice($temp_user->roles, 1));
+    $nid = db_result(db_query('SELECT nid from {node} where `title` = "%s" and type="dea_type" ', $role));
+
+
+    while ($l = db_fetch_object($result)) {
+        $lang = $l->language;
+
+        if ($uid == 1) {
+            $query2 = 'select * from {node} as n LEFT JOIN {content_type_main_category} as t ON n.nid = t.nid   where `type` = "%s"   field_category_dea_type_nid  = "%d" and language = "%s" ';
+            $result2 = db_query($query2, 'main_category', $nid, $lang);
+        } else {
+            $query2 = 'select * from {node} as n LEFT JOIN {content_type_main_category} as t ON n.nid = t.nid   where `type` = "%s"  and `uid`=%d and  field_category_dea_type_nid  = "%d" and language = "%s" ';
+            $result2 = db_query($query2, 'main_category', $uid, $nid, $lang);
+        }
+
+        $option2 = array();
+        while ($res = db_fetch_object($result2)) {
+            $option2[$res->nid] = $res->title;
+        }
+        $options[$lang] = $option2;
+    }
+
+    //return array($key);
+    if (isset($options[$key])) {
+        return $options[$key];
+    } else {
+        return array();
+    }
+}
+
+function _ahah_example_get_second_dropdown_options($key = '') {
+    global $user;
+    $uid = $user->uid;
+    $query = 'select language from {languages}  ';
+    $result = db_query($query);
+    $options = array();
+    while ($l = db_fetch_object($result)) {
+        $lang = $l->language;
+
+        if ($uid == 1) {
+            $query2 = 'select * from {node} where `type` = "%s" and language = "%s" ';
+            $result2 = db_query($query2, 'school', $lang);
+        } else {
+            $query2 = 'select * from {node} where `uid`=%d and `type` = "%s" and language = "%s" ';
+            $result2 = db_query($query2, $uid, 'school', $lang);
+        }
+
+        $option2 = array();
+        while ($res = db_fetch_object($result2)) {
+            $option2[$res->nid] = $res->title;
+        }
+        $options[$lang] = $option2;
+    }
+
+    //return array($key);
+    if (isset($options[$key])) {
+        return $options[$key];
+    } else {
+        return array();
+    }
+}
+
+function dea_dropdown_continue($form, &$form_state) {
+    $values = $form_state['values'];
+    unset($form_state['submit_handlers']);
+    form_execute_handlers('submit', $form, $form_state);
+    $form_state['my_values'] = $values;
+    $form_state['rebuild'] = TRUE;
+}
+
+function dea_dropdown_callback() {
+    $form = dea_callback_helper();
+
+    global $user;
+    $role = implode(', ', array_slice($user->roles, 1));
+
+    if ($form['field_' . $role])
+        $changed_elements = $form['field_' . $role];
+    if ($form['field_welcome_school'])
+        $changed_elements = $form['field_welcome_school'];
+    if ($form['field_personnel_school'])
+        $changed_elements = $form['field_personnel_school'];
+    if ($form['field_school_about_us'])
+        $changed_elements = $form['field_school_about_us'];
+    if ($form['field_school_news'])
+        $changed_elements = $form['field_school_news'];
+
+
+
+
+
+    // Prevent duplicate wrappers.
+    unset($changed_elements['#prefix'], $changed_elements['#suffix']);
+
+    $output = theme('status_messages') . drupal_render($changed_elements);
+
+    drupal_json(array(
+        'status' => TRUE,
+        'data' => $output,
+    ));
+}
+
+function dea_callback_helper() {
+    $form_state = array('storage' => NULL, 'submitted' => FALSE);
+    $form_build_id = $_POST['form_build_id'];
+    $form = form_get_cache($form_build_id, $form_state);
+    $args = $form['#parameters'];
+    $form_id = array_shift($args);
+    $form_state['post'] = $form['#post'] = $_POST;
+    // Enable the submit/validate handlers to determine whether AHAH-submittted.
+    $form_state['ahah_submission'] = TRUE;
+    $form['#programmed'] = $form['#redirect'] = FALSE;
+    drupal_process_form($form_id, $form, $form_state);
+    $form = drupal_rebuild_form($form_id, $form_state, $args, $form_build_id);
+    return $form;
+}
+
+function store_check_category_validate($form, &$form_state) {
+    //die('<pre>'.print_r($form_state,true).'</pre>');
+    if (!$form_state[values][nid]) {
+        if (!$form_state[values][translation_source]->nid) {
+            if (isset($_SESSION['current_chain_user']))
+                $uid = $_SESSION['current_chain_user'];
+            else
+                $uid = $form['uid']['#value'];
+
+            $welcomeCnt = db_result(db_query("select count(*) from {node} where `type`='%s'  and `uid` = %d ", 'main_category', $uid));
+            //echo $welcomeCnt;die();
+            if ($welcomeCnt >= 1) {
+                //echo "a";die();
+                form_set_error('', t('Exceeded maximum Welcome!'));
+            }
+        }
+    }
+}
+
+function dea_validate_form($form, &$form_state) {
+//echo 	$form_state[values][field_category_type][0][nid];die();
+    //die('<pre>'.print_r($form_state[values],true).'</pre>');
+    $cat = $form_state[values][field_category_type][0][nid];
+		 
+	global $user;
+	$temp_user = $user;
+	if (isset($_SESSION['current_chain_user'])) {
+  	$temp_user = user_load(array('uid' => $_SESSION['current_chain_user']));
+  }
+  $role = implode(', ', array_slice($user->roles, 1));
+  $nid_role = db_result(db_query('SELECT nid from {node} where `title` = "%s" and type="dea_type" ', $role));
+		
+    if ($cat == 3) {
+        if (!$form_state[values][nid]) {
+            if (!$form_state[values][translation_source]->nid) {
+                if (isset($_SESSION['current_chain_user']))
+                    $uid = $_SESSION['current_chain_user'];
+                else
+                    $uid = $form['uid']['#value'];
+
+                $welcomeCnt = db_result(db_query("select count(*) from {node} AS n LEFT JOIN {content_type_category_fields} AS cf ON n.nid =  cf.nid where `type`='%s'  AND field_category_type_nid = %d AND `uid` = %d  and  	field_main_id_value = %d ", 'category_fields', $cat, $uid,$_SESSION['current_chain_nid']));
+
+                if ($welcomeCnt >= 1) {
+                    form_set_error('', t('Exceeded maximum Items!'));
+                }
+            }
+        }
+    }
+    if ($cat == 353) {
+        if ($form_state[values][field_personnel_name][0][value] == "")
+            form_set_error('', t('Name field is required'));
+    }
+
+    if ($cat == 762) {
+        if (!empty($_GET['language'])) {
+            //$get_language = node_load();
+            if ($form_state[values][field_menu_category][0][value] == "") {
+                $language_list = language_list();
+                form_set_error('', t('Please go to category page and add menu category for' . ' ' . $language_list[$_GET["language"]]->name . ' ' . 'language'));
+            }
+
+
+            $category_from_get = $_REQUEST['category'];
+            $category_from_arg = node_load(arg(1));
+
+            $category_id = empty($category_from_get) ? $category_from_arg->field_menu_category[0]['value'] : $category_from_get;
+
+            if (empty($category_id)) {
+                $language_list = language_list();
+                form_set_error('', t('Please go to category page and add menu category for' . ' ' . $language_list[$_GET["language"]]->name . ' ' . 'language'));
+            }
+        } else {
+            if ($form_state[values][field_menu_category][0][value] == "") {
+                form_set_error('', t('Please select a menu category'));
+            }
+        }
+    }
+
+    if ($cat == 1667) {
+        if (!empty($_GET['language'])) {
+            //$get_language = node_load();
+            if ($form_state[values][field_main_catalog][0][value] == "") {
+                $language_list = language_list();
+                form_set_error('', t('Please go to catalog page and add main catalog for' . ' ' . $language_list[$_GET["language"]]->name . ' ' . 'language'));
+            }
+
+
+            $catalog_from_get = $_REQUEST['catalog'];
+            $catalog_from_arg = node_load(arg(1));
+
+            $catalog_id = empty($catalog_from_get) ? $catalog_from_arg->field_main_catalog[0]['value'] : $catalog_from_get;
+
+            if (empty($catalog_id)) {
+                $language_list = language_list();
+                form_set_error('', t('Please go to catalog page and add catalog for' . ' ' . $language_list[$_GET["language"]]->name . ' ' . 'language'));
+            }
+        } else {
+            if ($form_state[values][field_main_catalog][0][value] == "") {
+                form_set_error('', t('Please select a main catalog'));
+            }
+        }
+    }
+		if ($cat == 1043) {
+        if (!empty($_GET['language'])) {
+					
+            //$get_language = node_load();
+            if ($form_state[values][field_room_price_room][0][value] == "") {
+                $language_list = language_list();
+                form_set_error('', t('Please go to Room page and add Room for' . ' ' . $language_list[$_GET["language"]]->name . ' ' . 'language'));
+            }
+
+
+            $room_from_get = $_REQUEST['room'];
+            $room_from_arg = node_load(arg(1));
+
+            $room_id = empty($room_from_get) ? $room_from_get->field_room_price_room[0]['value'] : $room_from_get;
+
+            if (empty($room_id)) {
+                $language_list = language_list();
+                form_set_error('', t('Please go to room page and add room for' . ' ' . $language_list[$_GET["language"]]->name . ' ' . 'language'));
+            }
+        } else {
+            if ($form_state[values][field_room_price_room][0][value] == "") {
+                form_set_error('', t('Please select a Room'));
+            }
+        }
+    }
+    if ($cat == 616) {
+        if ($form_state[values][field_use_pin_code][0][value] == "Yes") {
+            if (strlen($form_state[values][field_pin_code][0][value]) == "") {
+                form_set_error('', t('pin code is required'));
+            }
+			else if(!is_numeric($form_state[values][field_pin_code][0][value]))
+			{
+				 form_set_error('field_pin_code', t('Invalid pin code'));	
+			}
+        }
+    }
+		//die_r($form_state[values]);
+		//checking session store id  equal to dropdown store id
+		if($form_state[values]['field_' . $role]['value']!=$form_state[values][field_main_id][0]['value'] && !$form_state[values][translation_source] && !$form_state[values][tnid] )
+		{
+			form_set_error('', t('Invalid '.$role));	
+		}
+
+}
+
+function dea_main_category_validate($form, &$form_state) {
+    $postal = $form_state['values']['field_location'][0]['postal_code'];
+    $latitude = $form_state['values']['field_location'][0]['locpick']['user_latitude'];
+    $longitude = $form_state['values']['field_location'][0]['locpick']['user_longitude'];	
+	$contact_phone = $form_state['values']['field_contact_phone'][0]['value'];
+
+	$city = $form_state['values']['field_location'][0]['city'];
+
+
+	if($city=="")
+	{
+		form_set_error("field_location][0][city", t('City is Required !'));
+	}
+	
+    if ( !preg_match ('/^[0-9 ]{1,15}$/', $postal)  && $postal != "") {
+        form_set_error("field_location][0][postal_code", t('Invalid Postal Code!'));
+    }
+    if (!is_numeric($latitude) && $latitude != "") {
+        form_set_error("field_location][0][locpick][user_latitude", t('Invalid Latitude!'));
+    }
+
+    if (!is_numeric($longitude) && $longitude != "") {
+        form_set_error("field_location][0][locpick][user_longitude", t('Invalid Longitude!'));
+    }
+	if(!empty($contact_phone)) {
+	  if (!eregi("^[-0-9)( +.]{10,18}$", $contact_phone)) {
+		 //form_set_error('field_contact_phone',t('Please add a numaric value to Phone field'));
+	  } 
+   }
+}
+
+function sendPushNotification($node, $nid) {
+
+    if ($nid) {
+        /* send push to Apple phone */
+        variable_set('apn_sandbox', FALSE);
+        $cet = "sites/default/files/ck_" . $nid . ".pem";
+
+        variable_set('apn_certificate', $cet);
+
+
+        apn_start();
+        apn_feedback();
+        $push = apn_create_push_object();
+
+        if ($push) {
+            try {
+
+                $push->connect();
+            } catch (Exception $e) {
+                watchdog('apn', 'Caught exception: !ex', array('!ex' => $e->__toString()), WATCHDOG_ERROR);
+            }
+			
+			//get user 
+			$cur_id = dea_get_current_user_dea_type_nid();
+			$cur_user = user_load($node->uid);
+			
+			$branch_ids = "";
+			if($cur_user->profile_user_type=="SCA")
+			{
+				
+				$query_1 = 'select ac.ca_nid  from {chain_access_config} as ac where ca_nid in ( select ca_nid from {chain_users} as cu where `sca_nid` = %d  ) and category_name = "news" and combine_chain = 2 '  ;
+				$result_1 = db_query($query_1, $cur_id);
+
+				$branch_ids = "";
+				while ($row_ca_nids = db_fetch_object($result_1)) {
+					$branch_ids .= "'".$row_ca_nids->ca_nid."',";
+				}
+				$branch_ids = rtrim($branch_ids, ",")	;	
+				if(!empty($branch_ids))
+				{
+						// for iOS
+						$query = 'select * from {apn_keys} where `app` = %d and `enabled`=%d and   branch in ( '.$branch_ids.' ) and language = "%s"  ';
+						$result = db_query($query, $nid, 1,$node->language);		
+						if (!$result)
+							watchdog('getting apn keys ', 'cant getting api keys ', array('!branchs' => $branch_ids, '!language' => $node->language));	
+								
+						// for Android		
+						$query2 = 'select * from {gcm_keys} where `app` = %d and `enabled`=%d and   branch in ( '.$branch_ids.' ) and language = "%s"  ';
+						$result2 = db_query($query2, $nid, 1,$node->language);		
+						if (!$result2)
+							watchdog('getting apn keys ', 'cant getting gcm keys ', array('!branchs' => $branch_ids, '!language' => $node->language));	
+
+				}
+			}
+			else
+			{
+				// for iOS
+				$query = 'select * from {apn_keys} where `app` = %d and `enabled`=%d and branch = %d and language = "%s" ';
+				$result = db_query($query, $nid, 1,$_SESSION['current_chain_nid'],$node->language);
+				if (!$result)
+					watchdog('getting apn keys ', 'cant getting api keys ', array('!branch' => $cur_id, '!language' => $node->language));
+								
+				// for Android						
+				$query2 = 'select * from {gcm_keys} where `app` = %d and `enabled`=%d and branch = %d and language = "%s" ';
+				$result2 = db_query($query2, $nid, 1,$_SESSION['current_chain_nid'],$node->language);
+				if (!$result2)
+					watchdog('getting apn keys ', 'cant getting gcm keys ', array('!branch' => $cur_id, '!language' => $node->language));		
+			}
+			
+      while ($apn = db_fetch_object($result)) {
+
+				
+                $key = $apn->key;
+                try {
+                    $message = new ApnsPHP_Message($key);
+                    $message->setBadge(1);
+                    $message->setText($node->title);
+                    $message->setSound();
+                    $message->setExpiry(intval(variable_get('apn_default_expiry', 604800)));
+                } catch (Exception $e) {
+                    watchdog('apn', 'Caught exception: !ex', array('!ex' => $e->__toString()), WATCHDOG_ERROR);
+                    //echo "a";die();
+                }
+                $push->add($message);
+            }
+
+            try {
+                $push->send();
+            } catch (ApnsPHP_Push_Exception $e) {
+
+                watchdog('apn', 'Caught exception: !ex', array('!ex' => $e->__toString()), WATCHDOG_ERROR);
+            }
+
+            watchdog('apn', "Sent !count notifications for different devices for !name (!uid).", array('!count' => count($key)));
+            $push->disconnect();
+
+            $errors = $push->getErrors();
+            if (!empty($errors)) {
+                //die('<pre>'.print_r($errors,true).'</pre>');
+                watchdog('apn', 'Errors from APN: <pre>' . print_r($errors, TRUE) . '</pre>');
+            }
+        }
+
+
+        /* push notification for android */
+
+        $query = 'select * from {gcm_api_keys} where `app` = %d  ';
+        $result = db_query($query, $nid);
+        $API = db_fetch_object($result);
+        variable_set('gcm_api_key', $API->key);
+				$tokens[] = "";
+
+        while ($apn = db_fetch_object($result2)) {
+            $tokens[] = $apn->key;
+        }
+        
+//die('<pre>'.print_r($tokens,true).'</pre>');
+
+        gcm_send_message($tokens, $node->title, false);
+    }
+}
+
+//get google map cordinates form the given adress
+function geocode($address) {
+    $address = str_replace(" ", "+", $address);
+
+    $url = "http://maps.googleapis.com/maps/api/geocode/xml?address=" . $address . "&sensor=true";
+    $coords = array('lat' => 0, 'lng' => 0);
+
+
+    try {
+        $xml = simplexml_load_file($url);
+    } catch (Exception $e) {
+        return array();
+    }
+
+    $status = $xml->status;
+    if ($status == "OK") {
+        $lat = $xml->result->geometry->location->lat;
+        $lang = $xml->result->geometry->location->lng;
+        $coords['lat'] = $lat;
+        $coords['lng'] = $lang;
+    }
+    return $coords;
+}
+function dea_user($op){
+
+  if ( $op == "login" ){
+		global $user;   
+		
+		//set the session values for the MSA login user
+		if($user->profile_user_type=="MSA" || $user->profile_user_type=="SCA" )
+		{
+			if($user->profile_user_type=="MSA" &&  !isset($_SESSION['current_chain_user']))
+			{
+				$_SESSION['current_chain_user'] = $user->uid;
+			}
+			if(!isset($_SESSION['current_chain_nid']))
+			{
+				$_SESSION['current_chain_nid'] = dea_get_current_user_dea_type_nid2();
+			}
+		}
+		
+		
+  }
+}
+
+function check_access_permission_for_redirection()
+{
+		global $user;
+		$temp_user = $user;
+		if(isset($_SESSION['current_chain_user'])) {
+			$temp_user = user_load(array('uid' => $_SESSION['current_chain_user']));
+		}
+		
+		$chain_user = db_result(db_query("select count(*) from {chain_users} where `ca_uid` = %d ",  $temp_user->uid));
+		if($chain_user>0)
+		{
+			
+			$roles_user = array();
+			foreach ($temp_user->roles as $userroles) {
+				$roles_user[] = $userroles;
+			}
+			
+			$result_nid = 'SELECT n.nid FROM {node} n WHERE n.title = "%s" ';
+			//Get user category ex: school,hotel 
+			$nid = db_result(db_query($result_nid, $roles_user[1]));
+			
+			$usernodes1 = db_query("SELECT * FROM {content_field_dea_type} WHERE field_dea_type_nid = %d", $nid);
+			
+			$user_type_array = array();
+				while ($usernodes_nid = db_fetch_object($usernodes1)) {
+				$relevent_node = node_load($usernodes_nid->nid);
+				$user_type_array[] = $relevent_node->title;
+			}
+		
+			$query2 = 'select * from {node}  where `type` = "%s" ORDER BY nid ASC ';
+			$result2 = db_query($query2, 'category');
+			while ($res = db_fetch_object($result2)) {
+				if (in_array($res->title, $user_type_array) && $res->title !='Sub Catalog') {
+								
+					$edit = db_result(db_query("select edit_store_admin from {chain_access_config} where `category_name`='%s'  and `ca_nid` = %d ", $res->title, $_SESSION['current_chain_nid']));
+					if($edit)
+					{
+						
+						if($res->nid==3)
+						{
+							
+							 $nidWel = db_result(db_query('SELECT n.nid from {node} AS n LEFT JOIN  content_type_category_fields AS cf ON cf.nid =  n.nid  where uid = %d and field_category_type_nid = 3 and type="category_fields" ', $temp_user->uid));
+							 if (!empty($nidWel)) {
+									//return array('path' =>  $base_url . "/node/" . $nidWel . "/edit/Welcome");
+									drupal_goto("node/" . $nidWel . "/edit/Welcome");
+							} else {
+									//return array('path' => $base_url . "/node/3/edit/Welcome");
+									drupal_goto("node/3/edit/Welcome");
+							}
+						}
+						else
+						{
+							
+							//return array('path' =>  $base_url . "/node/" . $res->nid . "/edit/".$res->title);
+							drupal_goto("node/" . $res->nid . "/edit/".str_replace(" ", "-", $res -> title));
+							
+						}
+	
+					}
+					
+				}	
+			}
+	
+		}
+		else
+		{
+			 $nidWel = db_result(db_query('SELECT n.nid from {node} AS n LEFT JOIN  content_type_category_fields AS cf ON cf.nid =  n.nid 
+						 where uid = %d and field_category_type_nid = 3 and type="category_fields" ', $temp_user->uid));
+	
+			if (!empty($nidWel)) {
+					//return array('path' =>  $base_url . "/node/" . $nidWel . "/edit/Welcome");
+					drupal_goto("node/" . $nidWel . "/edit/Welcome");
+			} else {
+					//return array('path' => $base_url . "/node/3/edit/Welcome");
+					drupal_goto("/node/3/edit/Welcome");
+			}
+		}	
+}
+function check_access_permission_for_user()
+{
+	
+	global $user;
+
+	//$nid = dea_get_current_user_dea_type_nid2();
+	if(!isset($_SESSION['current_chain_nid']))
+	{
+		$nid = dea_get_current_user_dea_type_nid2();
+	}
+	else
+	{	
+		$nid = $_SESSION['current_chain_nid'];
+	}
+//echo $nid;die();
+	$branchCnt = db_result(db_query("select count(ca_nid) from {chain_users} where `ca_nid`= %d ",  $nid));
+    
+
+  if ($branchCnt >= 1 && arg(3) && $user->name!="admin") 
+	{
+		$chain_cats =  array();
+		$query = 'select category_name from {chain_access_config} where `ca_nid` = %d ';
+        $result = db_query($query, $nid);
+        while ($chain = db_fetch_object($result)) {
+            $chain_cats[] = $chain->category_name;
+        }
+				
+		if(arg(3)=="Contact")
+			$catname = "Contact information";
+		else 
+			$catname = str_replace("-"," ",arg(3));
+
+		if(in_array($catname,$chain_cats))
+		{
+			if($catname=="Sub Catalog")
+				$title_check = "Catalog";
+			else
+				$title_check = $catname;
+									
+									
+			$check = check_edit_category_menu($nid,$title_check);	
+			
+			if(!$check)
+				drupal_goto('access-denied');
+		}
+		else if(empty($chain_cats))
+		{
+			drupal_goto('access-denied');
+		}
+	}
+}
+
+function dea_update_category_fields_form(&$form_state) {
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'submit',
+  );
+
+  return $form;
+
+}
+
+function dea_update_category_fields_form_submit($form, &$form_state) {
+  $function = 'dea_update_category_fields';
+  batch_set($function());
+}
+
+
+function dea_update_category_fields() {
+  
+  $main_category_nodes = db_query("select * from {node} where type='main_category' and tnid = nid;");
+
+  while ($result = db_fetch_object($main_category_nodes)) {
+    $operations[] = array(
+      'dea_update_category_fields_batch_op',
+      array($result->uid, $result->nid),
+    );
+  }
+
+  $batch = array(
+    'operations' => $operations,
+    'title' => t('Updating category fields'),
+    'finished' => 'dea_batch_finished',
+  );
+
+  // batch_set($batch);
+  return $batch;
+}
+
+function dea_update_category_fields_batch_op($uid, $nid, &$context) {
+  $category_fields = "select cf.nid as nid from {content_type_category_fields} cf left join {node} n on cf.nid = n.nid where cf.field_main_id_value is null and n.uid = %d";
+  $query = db_query($category_fields, $uid);
+
+  while ($result = db_fetch_object($query)) {
+    $node = node_load($result->nid);
+    $node->field_main_id[0]['value'] = $nid;
+    node_save($node);
+    $context['results'][] = $node->nid;
+  }
+
+  $context['message'] = t('Updating @node', array('@node' => $node->title));
+}
+
+function dea_batch_finished() {
+  drupal_set_message(print_r(func_get_args(), true));
+}
+
+function login_redirection()
+{
+	
+	//set the session values for the MSA login user
+		//if($user->profile_user_type=="MSA" || $user->profile_user_type=="SCA" )
+		//{
+			if($user->profile_user_type=="MSA" &&  !isset($_SESSION['current_chain_user']))
+			{
+				$_SESSION['current_chain_user'] = $user->uid;
+			}
+			if(!isset($_SESSION['current_chain_nid']))
+			{
+				$_SESSION['current_chain_nid'] = dea_get_current_user_dea_type_nid2();
+			}
+		//}
+
+		global $user;
+		$temp_user = $user;
+		if(isset($_SESSION['current_chain_user'])) {
+			$temp_user = user_load(array('uid' => $_SESSION['current_chain_user']));
+		}
+		
+		$chain_user = db_result(db_query("select count(*) from {chain_users} where `ca_uid` = %d ",  $temp_user->uid));
+		if($chain_user>0)
+		{
+			$roles_user = array();
+			foreach ($temp_user->roles as $userroles) {
+				$roles_user[] = $userroles;
+			}
+			
+			$result_nid = 'SELECT n.nid FROM {node} n WHERE n.title = "%s" ';
+			//Get user category ex: school,hotel 
+			$nid = db_result(db_query($result_nid, $roles_user[1]));
+			
+			$usernodes1 = db_query("SELECT * FROM {content_field_dea_type} WHERE field_dea_type_nid = %d", $nid);
+			
+			$user_type_array = array();
+				while ($usernodes_nid = db_fetch_object($usernodes1)) {
+				$relevent_node = node_load($usernodes_nid->nid);
+				$user_type_array[] = $relevent_node->title;
+			}
+		
+			$query2 = 'select * from {node}  where `type` = "%s" ORDER BY nid ASC ';
+			$result2 = db_query($query2, 'category');
+				
+			if(!isset($_SESSION['current_chain_nid']))
+			{
+				$main_id = dea_get_current_user_dea_type_nid2();
+			}
+			else
+			{
+				$main_id = $_SESSION['current_chain_nid'];
+			}
+			while ($res = db_fetch_object($result2)) {
+				if (in_array($res->title, $user_type_array) && $res->title !='Sub Catalog') {
+												
+					$edit = db_result(db_query("select edit_store_admin from {chain_access_config} where `category_name`='%s'  and `ca_nid` = %d ", $res->title, $main_id));
+					
+					if($edit)
+					{
+						if($res->nid==3)
+						{
+							
+							 $nidWel = db_result(db_query('SELECT n.nid from {node} AS n LEFT JOIN  content_type_category_fields AS cf ON cf.nid =  n.nid  where uid = %d and field_category_type_nid = 3 and type="category_fields" and language = "%s" and  field_main_id_value  = %d ', $temp_user->uid,$temp_user->language,$main_id));
+							 if (!empty($nidWel)) {
+									return array('path' =>  $base_url . "node/" . $nidWel . "/edit/Welcome");
+									exit();
+									//drupal_goto("node/" . $nidWel . "/edit/Welcome");
+							} else {
+									return array('path' => $base_url . "node/3/edit/Welcome");
+									exit();
+									//drupal_goto("node/3/edit/Welcome");
+							}
+						}
+						else
+						{
+							return array('path' =>  $base_url . "node/" . $res->nid . "/edit/".str_replace(" ", "-", $res -> title));
+							exit();
+							//drupal_goto("node/" . $res->nid . "/edit/".str_replace(" ", "-", $res -> title));
+							
+						}
+	
+					}
+					
+				}	
+			}
+			return array('path' => $base_url . "node/3/edit/Welcome");
+		}
+		else
+		{
+			if(!isset($_SESSION['current_chain_nid']))
+			{
+				$main_id = dea_get_current_user_dea_type_nid2();
+			}
+			else
+			{
+				$main_id = $_SESSION['current_chain_nid'];
+			}
+			 $nidWel = db_result(db_query('SELECT n.nid from {node} AS n LEFT JOIN  content_type_category_fields AS cf ON cf.nid =  n.nid 
+						 where uid = %d and field_category_type_nid = 3 and type="category_fields" and language = "%s" and  field_main_id_value = %d ', $temp_user->uid,$temp_user->language,$main_id));
+	
+			if (!empty($nidWel)) {
+					return array('path' =>  $base_url . "node/" . $nidWel . "/edit/Welcome");
+					//drupal_goto("node/" . $nidWel . "/edit/Welcome");
+			} else {
+					return array('path' => $base_url . "node/3/edit/Welcome");
+					//drupal_goto("/node/3/edit/Welcome");
+			}
+		}
+}

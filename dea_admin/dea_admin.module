@@ -1,0 +1,188 @@
+<?php
+
+function dea_admin_block($op='list', $delta=0) {
+  // listing of blocks, such as on the admin/block page
+	global $user;
+	if ($op == "list") {
+	 
+	$block[0]["info"] = t('multiple stores menu Block');
+	return $block;
+	}
+	else if($op == 'view')
+	{
+		if($user->profile_user_type=="MSA")
+		{		
+			$block_content='';
+			$block_content.='<select name="stores" id="stores" >';
+			
+			//$query = 'select * from {chain_users} as cu LEFT JOIN {node} as n ON n.nid = cu.ca_nid   where `sca_uid` = %d   ';
+			//$result = db_query('SELECT * FROM {node} as n LEFT JOIN {dea_admin} as da ON n.nid = da.nid WHERE da.uid = %d and n.language = "%s" ',$user->uid,$user->language);
+			$result = db_fetch_object(db_query('select * from {dea_admin} where uid = %d   ', $user->uid));
+			if(is_array(unserialize($result->data)))
+			{
+				$stores = unserialize($result->data);
+			}
+			else
+			{
+				$stores = unserialize(unserialize($result->data));
+			}
+			//define array for sorting
+			$sorting_ary = "";
+			if(is_array($stores))
+			{
+				 foreach ($stores  as  $record) {
+					
+					if($record)
+					{
+						$node = node_load($record);
+						$sorting_ary[$node->nid] = $node->title;				
+					}
+				}
+				natcasesort($sorting_ary);
+				foreach ($sorting_ary  as  $key => $record) {
+					$node = node_load($key);
+					$block_content.='<option value="'.$user->uid.'-'.$key.'" ';
+					if($_SESSION['current_chain_user']==$node->uid  && $_SESSION['current_chain_nid']==$node->nid )
+					{
+						$block_content.=' selected ' ;
+					}
+					$block_content.='>'.$node->title.'</option>' ;
+				}
+				
+			}
+			$block_content.='</select>';
+ 
+
+			$block['content'] = $block_content;
+			return $block;
+	  	}
+  	}
+}
+
+
+function dea_admin_menu() {
+
+   $items['ajaxLoad/setCurrntMultiUser'] = array(
+    'title' => 'user groups',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+    'page callback' => 'dea_multi_set_user_callback',
+  );
+
+	 return $items;
+}
+
+function dea_multi_set_user_callback() {
+	global $base_url;
+	$multi_arg = $_REQUEST['multi_user'];
+	$multi_array = explode("-", $multi_arg);
+	$multi_uid = $multi_array[0];
+	$multi_nid = $multi_array[1];
+	$_SESSION['current_multi_user'] = $multi_uid;
+	// this is for views
+	$_SESSION['current_chain_user'] = $multi_uid;
+	$_SESSION['current_chain_nid'] = $multi_nid;
+	
+	$link_path = check_access_permission_for_redirection_user_changed();
+/*	$tmp_user = user_load($multi_uid);
+
+  $nidWel = db_result(db_query('SELECT n.nid from {node} AS n LEFT JOIN  content_type_category_fields AS cf ON cf.nid =  n.nid 
+       where uid = %d and field_category_type_nid = 3 and type="category_fields" and language = "%s" and field_main_id_value = %d ', $_SESSION['current_multi_user'],$tmp_user->language,$multi_nid));
+
+  //replace - form space
+  $page_link_title = str_replace(" ", "-", $res->title);
+  if (empty($end_url)) {
+    if (!empty($nidWel)) {
+      $link_path = $base_url."/node/".$nidWel."/edit/Welcome";
+    }
+    else {
+      $link_path = $base_url."/node/3/edit/Welcome";
+    }
+  }
+	echo $link_path;*/
+	echo $link_path;
+}
+function check_access_permission_for_redirection_user_changed()
+{
+		global $user,$base_url;
+		$temp_user = $user;
+		if(isset($_SESSION['current_chain_user'])) {
+			$temp_user = user_load(array('uid' => $_SESSION['current_chain_user']));
+		}
+		
+		$chain_user = db_result(db_query("select count(*) from {chain_users} where `ca_uid` = %d ",  $temp_user->uid));
+		if($chain_user>0)
+		{
+			
+			$roles_user = array();
+			foreach ($temp_user->roles as $userroles) {
+				$roles_user[] = $userroles;
+			}
+			
+			$result_nid = 'SELECT n.nid FROM {node} n WHERE n.title = "%s" ';
+			//Get user category ex: school,hotel 
+			$nid = db_result(db_query($result_nid, $roles_user[1]));
+			
+			$usernodes1 = db_query("SELECT * FROM {content_field_dea_type} WHERE field_dea_type_nid = %d", $nid);
+			
+			$user_type_array = array();
+				while ($usernodes_nid = db_fetch_object($usernodes1)) {
+				$relevent_node = node_load($usernodes_nid->nid);
+				$user_type_array[] = $relevent_node->title;
+			}
+		
+			$query2 = 'select * from {node}  where `type` = "%s" ORDER BY nid ASC ';
+			$result2 = db_query($query2, 'category');
+			
+			if(!isset($_SESSION['current_chain_nid']))
+			{
+				$main_id = dea_get_current_user_dea_type_nid2();
+			}
+			else
+			{
+				$main_id = $_SESSION['current_chain_nid'];
+			}
+			
+			while ($res = db_fetch_object($result2)) {
+				if (in_array($res->title, $user_type_array) && $res->title !='Sub Catalog') {
+								
+					$edit = db_result(db_query("select edit_store_admin from {chain_access_config} where `category_name`='%s'  and `ca_nid` = %d ", $res->title, $_SESSION['current_chain_nid']));
+					if($edit)
+					{
+						
+						if($res->nid==3)
+						{							
+							 $nidWel = db_result(db_query('SELECT n.nid from {node} AS n LEFT JOIN  content_type_category_fields AS cf ON cf.nid =  n.nid  where uid = %d and field_category_type_nid = 3 and type="category_fields"   and  field_main_id_value  = %d ', $temp_user->uid,$main_id));
+							 if (!empty($nidWel)) {
+									return $base_url."/node/" . $nidWel . "/edit/Welcome";
+							} else {
+									return $base_url."/node/3/edit/Welcome" ;
+									
+							}
+						}
+						else
+						{
+							return  $base_url."/node/" . $res->nid . "/edit/".str_replace(" ", "-", $res->title);
+							
+						}
+	
+					}
+					
+				}	
+			}
+	
+		}
+		else
+		{
+			 $nidWel = db_result(db_query('SELECT n.nid from {node} AS n LEFT JOIN  content_type_category_fields AS cf ON cf.nid =  n.nid 
+						 where uid = %d and field_category_type_nid = 3 and type="category_fields" ', $temp_user->uid));
+	
+			if (!empty($nidWel)) {
+					return $base_url."/node/" . $nidWel . "/edit/Welcome";
+			} else {
+					return $base_url."/node/3/edit/Welcome";
+			}
+		}	
+}
+
+

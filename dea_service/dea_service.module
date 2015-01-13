@@ -1,0 +1,2495 @@
+<?php
+
+function dea_service_service() {
+	
+	$query = "select * from {role} where `rid` NOT IN (1,2,3,4) ";
+    $result = db_query($query) ;
+	while ($s = db_fetch_object($result)) {
+		
+		$ary[] = 
+		array(
+            '#method' => ''.strtolower($s->name).'.hasUpdates',
+            '#callback' => 'dea_service_has_updates',
+            '#access arguments' => array('get content updates'),
+            '#args' => array(
+                array('name' => 'latestupdate',
+                    'type' => 'int',
+                    'description' => t('UNIX timestamp for when data was last updated.')
+                ),
+                array('name' => 'nid',
+                    'type' => 'int',
+                    'description' => t(''.$s->name.' node ID.'),
+                ),
+            ),
+            '#return' => 'int',
+            '#help' => t('Check if there are new updates and report stats.')
+        );
+		$ary[] = 
+        array(
+            '#method' => ''.strtolower($s->name).'.getUpdates',
+            '#callback' => 'dea_service_get_updates',
+            '#access arguments' => array('get content updates'),
+            '#args' => array(
+                array('name' => 'latestupdate',
+                    'type' => 'int',
+                    'description' => t('UNIX timestamp for when data was last updated.')
+                ),
+                array('name' => 'nid',
+                    'type' => 'int',
+                    'description' => t(''.$s->name.' node ID.'),
+                ),
+                array('name' => 'nids',
+                    'type' => 'array',
+                    'description' => t('A list of nids for all the nodes that are stored in the system and might need updating. This is required to track if something should be deleted.')
+                ),
+                
+				array('name' => 'type',
+                     'type' => 'array',
+                     'description' => t('A list of types  for all the nodes that are stored in the system and might need updating.'),
+					 'optional' => true,
+                ),
+				array('name' => 'phone_id',
+                    'type' => 'string',
+                    'description' => t('Phone ID.'),
+					'optional' => true,
+                ),
+            ),
+            '#return' => 'int',
+            '#help' => t('Check if there are new updates and report stats.')
+        );
+		$ary[] = array(
+            '#method' => ''.strtolower($s->name).'.getInterfaceNames',
+            '#callback' => 'dea_service_get_interface_names',
+            '#access arguments' => array('get content updates'),
+            '#args' => array(
+            ),
+            '#return' => 'int',
+            '#help' => t('Returns the translations for the interface tabs.')
+        );
+		
+
+        $ary[] =  array(
+            '#method' => ''.strtolower($s->name).'.getLanguages',
+            '#callback' => 'dea_service_get_languages',
+            '#access arguments' => array('get content updates'),
+            '#args' => array(
+                array('name' => 'nid',
+                    'type' => 'int',
+                    'description' => t(''.$s->name.' node ID.'),
+                ),
+            ),
+            '#return' => 'int',
+            '#help' => t('Return Coupon Details.')
+        );
+		$ary[] = array(
+            '#method' => ''.strtolower($s->name).'.getAllThemes',
+            '#callback' => 'dea_service_get_all_themes',
+            '#access arguments' => array('get content updates'),
+            '#args' => array(
+            ),
+            '#return' => 'int',
+            '#help' => t('Returns the translations for the themes tabs.')
+        );
+		$ary[] = array(
+            '#method' => ''.strtolower($s->name).'.setCoupon',
+            '#callback' => 'dea_service_set_coupon',
+            '#access arguments' => array('get content updates'),
+            '#args' => array(
+                array('name' => 'nid',
+                    'type' => 'int',
+                    'description' => t('dea node ID.'),
+                ),
+
+
+                array('name' => 'phoneid',
+                    'type' => 'string',
+                    'description' => t('User Phone ID.')
+                ),
+            ),
+            '#return' => 'int',
+            '#help' => t('Return Coupon Details.')
+        );
+				
+	}
+	
+	$ary[] = array(
+            '#method' => 'dea.hasUpdates',
+            '#callback' => 'dea_service_has_updates',
+            '#access arguments' => array('get content updates'),
+            '#args' => array(
+                array('name' => 'latestupdate',
+                    'type' => 'int',
+                    'description' => t('UNIX timestamp for when data was last updated.')
+                ),
+                array('name' => 'nid',
+                    'type' => 'int',
+                    'description' => t('DEA node ID.'),
+                ),
+
+            ),
+            '#return' => 'int',
+            '#help' => t('Check if there are new updates and report stats.')
+        );
+		$ary[] = array(
+            '#method' => 'dea.getBranches',
+            '#callback' => 'dea_service_get_bransches',
+            '#access arguments' => array('get content updates'),
+            '#args' => array(
+                array('name' => 'nid',
+                    'type' => 'int',
+                    'description' => t('DEA node ID.'),
+                ),
+				array('name' => 'version',
+                    'type' => 'string',
+                    'description' => t('Application Version.'),
+					'optional' => true,
+                ),
+
+            ),
+            '#return' => 'int',
+            '#help' => t('Check if there are new updates and report stats.')
+        );
+        $ary[] = array(
+            '#method' => 'dea.getUpdates',
+            '#callback' => 'dea_service_get_updates',
+            '#access arguments' => array('get content updates'),
+            '#args' => array(
+                array('name' => 'latestupdate',
+                    'type' => 'int',
+                    'description' => t('UNIX timestamp for when data was last updated.')
+                ),
+                array('name' => 'nid',
+                    'type' => 'int',
+                    'description' => t('DEA node ID.'),
+                ),
+                array('name' => 'nids',
+                    'type' => 'array',
+                    'description' => t('A list of nids for all the nodes that are stored in the system and might need updating. This is required to track if something should be deleted.')
+                ),
+				array('name' => 'type',
+                     'type' => 'array',
+                     'description' => t('A list of types  for all the nodes that are stored in the system and might need updating.'),
+					 'optional' => true,
+                ),
+				array('name' => 'phone_id',
+                    'type' => 'string',
+                    'description' => t('Phone ID.'),
+					'optional' => true,
+                ),
+            ),
+            '#return' => 'int',
+            '#help' => t('Check if there are new updates and report stats.')
+        );
+       $ary[] =  array(
+            '#method' => 'dea.getInterfaceNames',
+            '#callback' => 'dea_service_get_interface_names',
+            '#access arguments' => array('get content updates'),
+            '#args' => array(
+            ),
+            '#return' => 'int',
+            '#help' => t('Returns the translations for the interface tabs.')
+        );
+
+        $ary[] = array(
+            '#method' => 'dea.getLanguages',
+            '#callback' => 'dea_service_get_languages',
+            '#access arguments' => array('get content updates'),
+            '#args' => array(
+                array('name' => 'nid',
+                    'type' => 'int',
+                    'description' => t('DEA node ID.'),
+                ),
+            ),
+            '#return' => 'int',
+            '#help' => t('Return Coupon Details.')
+        );
+		$ary[] = array(
+            '#method' => 'dea.getAllThemes',
+            '#callback' => 'dea_service_get_all_themes',
+            '#access arguments' => array('get content updates'),
+            '#args' => array(
+            ),
+            '#return' => 'int',
+            '#help' => t('Returns the translations for the themes tabs.')
+        );
+		$ary[] = array(
+            '#method' => 'dea.setCoupon',
+            '#callback' => 'dea_service_set_coupon',
+            '#access arguments' => array('get content updates'),
+            '#args' => array(
+                array('name' => 'nid',
+                    'type' => 'int',
+                    'description' => t('dea node ID.'),
+                ),
+                array('name' => 'phoneid',
+                    'type' => 'string',
+                    'description' => t('User Phone ID.')
+                ),
+            ),
+            '#return' => 'int',
+            '#help' => t('Return Coupon Details.')
+        );
+		$ary[] = array(
+            '#method' => 'dea.set_language_branch',
+            '#callback' => 'dea_set_language_branch',
+            '#access arguments' => array('get content updates'),
+            '#args' => array(
+				 array('name' => 'phoneid',
+                    'type' => 'string',
+                    'description' => t('User Phone ID.')
+                ),
+                array('name' => 'nid',
+                    'type' => 'int',
+                    'description' => t('dea Branch ID.'),
+                ),
+				array('name' => 'language',
+                    'type' => 'string',
+                    'description' => t('dea Current Language'),
+                ),
+				array('name' => 'app_type',
+                    'type' => 'string',
+                    'description' => t('App Type'),
+                ),
+               
+            ),
+            '#return' => 'int',
+            '#help' => t('Save Details.')
+        );
+		 
+		
+
+	return $ary;
+    
+}
+
+function dea_service_has_updates($latestupdate, $nid) {
+	watchdog('nin_service device', "Version: $version<br />OS: $os<br />OS version: $osversion<br />Size: $size");
+
+//dea_updateNewsFeeds($nid);
+
+
+	$node = node_load($nid);
+	$uid = $node->uid; // Must be school user account or shit breaks
+
+
+	$theme_nid = $node->field_theme[0][nid];
+
+	$delete_stamps = variable_get('dea_delete', array());
+
+	$deleted = $delete_stamps[$uid];
+
+
+
+  //if($deleted > $latestupdate && isset($u->changed) && $deleted > $u->changed) {
+  if ($deleted > $latestupdate) {
+    return $deleted;
+  }
+	
+	$order_stamps = variable_get('dea_order', array());
+
+
+	//check timestamp for personal contact order
+	$personnel_contact_order = $order_stamps['Personnel Contact'];
+	if ($personnel_contact_order > $latestupdate) {
+        return $personnel_contact_order;
+    }
+	
+	//check timestamp for about us order
+	$about_us_order = $order_stamps['About Us'];
+	if ($about_us_order > $latestupdate) {
+        return $about_us_order;
+    }
+	
+	//check timestamp for catelog order
+	$catalog_order = $order_stamps['Catalog'];
+	if ($catalog_order > $latestupdate) {
+        return $catalog_order;
+    }
+
+	//check timestamp for Category order
+	$category_order = $order_stamps['Category'];
+	if ($category_order > $latestupdate) {
+        return $category_order;
+    }
+	
+	//check timestamp for access config update
+	$chain_config_time= variable_get('dea_chain_config','');
+	if ($chain_config_time > $latestupdate) {
+        return $chain_config_time;
+    }
+	
+	
+	
+	
+	$tmp_user = user_load($uid);
+	
+	if($tmp_user->profile_user_type=="SCA")
+	{
+
+		$query = 'select * from {chain_users} where `sca_nid` = %d ';
+    	$result = db_query($query, $nid) ;
+    	while($row = db_fetch_object($result))
+		{
+			$tmp_node = node_load($row->ca_nid);
+			if($tmp_node->changed > $latestupdate)
+				return $tmp_node->changed;
+		}
+	}
+	else
+	{
+				
+    $sca_nid_tmp = db_result(db_query("select sca_nid from {chain_users} where `ca_nid`= %d  ",$nid));	
+		if($sca_nid_tmp)
+		{
+			
+			$query = 'select * from {chain_users} where `sca_nid` = %d ';
+			$result = db_query($query, $sca_nid_tmp) ;
+			while($row = db_fetch_object($result))
+			{
+				$tmp_node = node_load($row->ca_nid);
+				if($tmp_node->changed > $latestupdate)			
+					return $tmp_node->changed;
+			}
+
+
+			$query = 'select category_nid from {chain_access_config} where `ca_nid` = %d and `combine_chain` = %d  ';
+			$result = db_query($query, $nid,2) ;
+			
+			$node_sca = node_load($sca_nid_tmp);
+			while($row = db_fetch_object($result))
+			{
+				$query2 = 'select  changed  from {node} as n , content_type_category_fields as cf  where n.nid = cf.nid and `field_category_type_nid` = %d and uid = %d  ';
+				$result2 = db_query($query2, $row->category_nid,$node_sca->uid) ;
+				while($row2 = db_fetch_object($result2))
+				{
+					if($row2->changed>$latestupdate)
+					{
+						return $row2->changed;
+					}
+				}
+				
+
+			}
+
+			$query_chain_welcome = 'select * from {node} where `changed` > %d and `uid`=%d  and type = "chain_welcome" order by `changed` DESC limit 1 ;';
+
+    		$res_chain_welcome = db_query($query_chain_welcome, $latestupdate, $node_sca->uid);
+		    $row2_welcome = db_fetch_object($res_chain_welcome);
+			if($row2_welcome->changed > $latestupdate)
+				return $row2_welcome->changed;
+				
+				
+				
+		}
+
+	}
+	// check only main_category	 type only 
+  $query = 'select * from {node} where (`changed` > %d and `nid`=%d)  order by `changed` DESC limit 1 ;';
+  $result = db_query($query, $latestupdate, $nid) ;
+  $u = db_fetch_object($result);
+	if (isset($u->nid)) {
+			return $u->changed;
+	}
+	// check others if not main_category	 and category_fields
+	$query = 'select * from {node} where (`changed` > %d and `uid`=%d) or (`nid` = %d and `changed` > %d ) and type != "main_category" and type != "category_fields" order by `changed` DESC limit 1 ;';
+  $result = db_query($query, $latestupdate, $uid, $theme_nid, $latestupdate) ;
+	$u = db_fetch_object($result);
+	if (isset($u->nid)) {
+			return $u->changed;
+	}	
+	
+	// check  category_fields
+	$query = 'select * from {node} as n left join {content_type_category_fields} as cf ON n.nid = cf.nid where (`changed` > %d and `uid`=%d)  and type = "category_fields" and field_main_id_value = %d order by `changed` DESC limit 1 ';
+  $result = db_query($query, $latestupdate, $uid,$nid) ;
+	$u = db_fetch_object($result);
+	if (isset($u->nid)) {
+			return $u->changed;
+	}	
+	return 0;
+}
+
+function dea_service_get_bransches($nid,$version=1) {
+	
+	global $language;
+    $node = node_load($nid);
+	
+	$theme_node = node_load($node->field_theme[0]['nid']);
+    $uid = $node->uid; 	
+	$nodes = array();
+	
+	$tmp_user = user_load($uid);
+	
+	if($tmp_user->profile_user_type=="SCA")
+	{
+		$sca_nid = $nid;
+	
+		$tmp_user = user_load($uid);
+		if($tmp_user->profile_user_type=="SCA")
+			$sca_nid = $nid;
+		else
+			$sca_nid = db_result(db_query("select sca_nid from {chain_users}   where `ca_nid`=%d ",$nid ));
+		
+/*		$chain_node = node_load($sca_nid);
+		if ($chain_node->changed > $teststamp)
+		{
+			$location = $chain_node->field_location[0];
+			$location['branch_name'] = $chain_node->title;
+			$nodes['branch_location_info'][$chain_node->nid] = $location;
+			$latestupdate = $chain_node->changed;
+		}*/
+		
+		$query = 'select ca_nid from {chain_users} where  sca_nid=%d ';
+		$result = db_query($query,  $sca_nid) ;
+	
+		while ($c = db_fetch_object($result)) {
+			
+			$chain_node = node_load($c->ca_nid);
+			if ($chain_node->changed > $teststamp)
+			{
+				$location = $chain_node->field_location[0];
+				$location['branch_name'] = $chain_node->title;
+				$location['nid'] = $chain_node->nid;
+				$location['branch_phone'] = $chain_node->field_contact_phone[0]['value'];				
+				$nodes['branch_location_info'][$chain_node->nid] = $location;
+				$latestupdate = $chain_node->changed;
+			}
+			
+		}
+		
+		
+		
+		
+		// get chain welcome
+		$query = 'select * from {node} where `type`="%s" and uid = %d and language = "%s" ';
+		$result = db_query($query, 'chain_welcome', $uid,$tmp_user->language) ;
+		$welcome = db_fetch_object($result);
+		
+		
+		$welcome_node = node_load($welcome->nid);
+		$welcome_node->field_top_bar_bgtexture = $theme_node->field_top_bar_bgtexture[0];
+		$welcome_node->field_top_text_font = $theme_node->field_top_text_font[0][value];
+		$welcome_node->field_top_bar_fontsize = $theme_node->field_top_bar_fontsize[0][value];
+		$welcome_node->field_top_text_color = $theme_node->field_top_text_color[0][value];
+		$welcome_node->field_splash_image = $node->field_splash_image[0];
+		$welcome_node->field_use_logo_ios = $welcome_node->field_use_logo[0]['value'];
+		$welcome_node->field_button_large_normal = $theme_node->field_button_large_normal[0];
+		$welcome_node->field_button_large_pressed = $theme_node->field_button_large_pressed[0];
+		$welcome_node->field_large_normal_texture = $theme_node->field_large_normal_texture[0];
+		$welcome_node->field_large_active_texture = $theme_node->field_large_active_texture[0];
+		
+		$welcome_node->field_button_normal_font_color = $theme_node->field_button_normal_font_color[0][value];
+		$welcome_node->field_button_font_size = $theme_node->field_button_font_size[0][value];
+		$welcome_node->field_button_text_font = $theme_node->field_button_text_font[0][value];
+		$welcome_node->field_table_cell_text_color = $theme_node->field_table_cell_text_color[0][value];
+		$welcome_node->field_bgtexture = $theme_node->field_bgtexture[0];
+		$welcome_node->field_segment_image = $theme_node->field_segment_image[0];
+		$welcome_node->field_segment_image_selected = $theme_node->field_segment_image_selected[0];
+		$welcome_node->field_segment_divider = $theme_node->field_segment_divider[0];
+		$welcome_node->field_tabbar_bgtexture = $theme_node->field_tabbar_bgtexture[0];
+		$welcome_node->field_welcome_tab_bg_pressed = $theme_node->field_welcome_tab_bg_pressed[0];
+		$welcome_node->field_welcome_tab_bg_selected = $theme_node->field_welcome_tab_bg_selected[0];
+		$welcome_node->field_welcome_tab_bg_unselected = $theme_node->field_welcome_tab_bg_unselected[0];
+		
+		$welcome_node->field_welcome_tab_pressed_clr = $theme_node->field_welcome_tab_pressed_clr[0][value];
+		$welcome_node->field_welcome_tab_selected_clr = $theme_node->field_welcome_tab_selected_clr[0][value];
+		$welcome_node->field_welcome_tab_unselected_clr = $theme_node->field_welcome_tab_unselected_clr[0][value];
+		$welcome_node->node_title = $node->title;
+		
+		
+	
+		
+		$fields = array(
+                'title', 'body', 'teaser', 'field_not_all_stores_text',
+        );
+								
+		if($version==2)
+		{
+			$welcome_node = apply_nin_service($welcome_node, $fields);					
+		}
+		$nodes['chain_welcome'][$welcome->nid] = $welcome_node;
+
+		$names = array(
+        // Tabs
+        'select_from_list' => t('Select form list'),	
+        'cancel' => t('Cancel'),
+		'select_from_map' => t('Select from map'),
+		'not_all_stores_available' => t('Not all stores of the chain/franchise is available in the app'),	
+		'continue_without_store' => t('Continue without store'),
+		'go_to_standard_shop' => t('Set as my home store'),	
+		);
+			
+		$langs = get_user_all_languages($uid);
+
+		$trans = array();
+	
+		foreach ($names as $untrans => $translated) {
+			$trans[$untrans] = array();
+			foreach ($langs as $lang => $name) {
+				$string = locale($translated, $lang);
+				$trans[$untrans][$lang] = $string;
+			}
+		}
+		$nodes['interface_names'] = $trans;
+		$nodes['default_language'] = $tmp_user->language;
+		$nodes['supported_languages'] = $langs;
+		
+		
+		//$nodes['theme_details'] =$theme_details;
+	
+	}
+	
+	
+	
+	return $nodes;
+	
+	
+}
+
+function dea_service_get_updates_complex($latestupdate, $nid, $nids, $version, $os, $osversion, $size) {
+    $nodes = array();
+    $teststamp = $latestupdate;
+
+    $deleted = array();
+    // Check for deletions
+    foreach ($nids as $dnid) {
+        if (!node_load($dnid)) {
+            $deleted[] = $dnid;
+        }
+    }
+
+    $node_list = array();
+    $r = node_load($nid);
+    if ($r->tnid) {
+        $node_list[$r->tnid] = node_load($r->tnid); // Make sure it's the canonical node, not a translation (should be)
+        $rnid = $r->tnid;
+    } else {
+        $node_list[$r->nid] = node_load($r->nid); // Use normal nid
+        $rnid = $r->nid;
+    }
+
+    // Get menu categories
+    $query = 'select * from {content_type_category} where `field_category_school_nid`=%d;';
+    $result = db_query($query, $rnid) ;
+    while ($c = db_fetch_object($result)) {
+        $c = node_load($c->nid); // Get node info
+        if ($c->tnid) {
+            $c = node_load($c->tnid); // Make sure we have the canonical node and not a translation
+            $node_list[$c->tnid] = $c;
+            $cnid = $c->tnid;
+        } else {
+            $node_list[$c->nid] = $c;
+            $cnid = $c->nid;
+        }
+
+        // Get translated categories and dive into them for menu items
+        $query = 'select * from {node} where `tnid`=%d;';
+        $t_result = db_query($query, $cnid) ;
+        while ($ct = db_fetch_object($t_result)) {
+            // Get menu items
+            $query = 'select * from {content_type_menu} where `field_menu_category_nid`=%d;';
+//      echo sprintf($query,$ct->nid);
+            $result = db_query($query, $ct->nid) ;
+            while ($m = db_fetch_object($result)) {
+//        echo $m->nid;
+                $m = node_load($m->nid); // Get node info
+                if ($m->tnid) {
+                    $m = node_load($m->tnid); // Make sure we have the canonical node and not a translation
+                    $node_list[$m->tnid] = $m;
+                    $mnid = $m->tnid;
+                } else {
+                    $node_list[$m->nid] = $m;
+                    $mnid = $m->nid;
+                }
+            }
+        }
+    }
+
+    // Get specials
+    $query = 'select * from {content_type_special} where `field_special_school_nid`=%d;';
+    $result = db_query($query, $rnid) ;
+    while ($s = db_fetch_object($result)) {
+        $s = node_load($s->nid); // Get node info
+        if ($s->tnid) {
+            $s = node_load($s->tnid); // Make sure we have the canonical node and not a translation
+            $node_list[$s->tnid] = $s;
+        } else {
+            $node_list[$s->nid] = $s;
+        }
+    }
+
+    // Only return updates
+    foreach ($node_list as $node) {
+        if ($node->changed > $teststamp) {
+            if ($node->changed > $latestupdate) {
+                $latestupdate = $node->changed;
+            }
+            $tmp_node = clone $node; // Just to make sure we don't get referential problems
+
+            $fields = array(
+                'title', 'node', 'teaser', 'field_school_title',
+            );
+
+            switch ($node->type) {
+                case 'school':
+                    $fields = array(
+                        'title', 'node', 'teaser', 'field_school_title',
+                    );
+                    break;
+                default:
+            }
+
+            echo print_r($fields, true);
+            $tmp_node = nin_service_include_translation($tmp_node, $fields); // Include translation data
+
+            $tmp_node = nin_service_strip_node($tmp_node);
+            
+            $tmp_node = nin_service_category_image($tmp_node);
+
+            $tmp_node = nin_service_simplify($tmp_node);
+
+            $nodes[$tmp_node->nid] = $tmp_node;
+        }
+    }
+
+    $updates = array(
+        'deleted' => $deleted,
+        'updated' => $nodes,
+        'latestupdate' => $latestupdate,
+    );
+
+    return $updates;
+}
+
+function dea_service_get_updates($latestupdate, $nid, $nids, $catTypes="",$phone_id="",$chain_active="",$nodes="",$pre_nid="",$pre_latestupdate="",$order_arrays="") {
+    if($chain_active!=1)
+	{
+            $nodes = array();
+            $node_list = array();
+	}
+    $teststamp = $latestupdate;
+	
+
+    $r = node_load($nid);
+    $uid = $r->uid;
+
+	
+    $deleted = array();
+	$theme_nid = $r->field_theme[0][nid];
+
+
+	$themeok ="";
+    // Check for deletions
+    foreach ($nids as $dnid) {
+
+        if (!node_load($dnid)) {
+            $deleted[] = $dnid;
+        }
+		if($theme_nid==$dnid)
+			$themeok=1;
+		
+			
+/*		$tmnids .= $dnid;
+    	if (next($nids)==true) 
+			$tmnids .= ",";*/
+    }
+	
+
+
+	//echo $tmnids;die();
+
+
+    $query = 'select * from {node} where (`uid`=%d and type != "themes") or nid=%d ORDER BY changed';
+    $result = db_query($query, $r->uid, $theme_nid) ;
+
+    while ($c = db_fetch_object($result)) {
+		
+		
+		$timeAllAry[]= $c->changed;
+        $c = node_load($c->nid); // Get node info
+		
+		
+		if($c->field_category_type[0]['nid'] == 616)
+		{
+
+			
+			if($phone_id)
+			{
+				
+				$phoneAry = $c->field_phone_id;
+				$isphone = false;
+				//die('<pre>'.print_r($phoneAry,true).'</pre>');
+				if($phoneAry)
+				{					
+					foreach($phoneAry as $phoneID)
+					{
+						
+						if($phoneID['value']==$phone_id)
+						{
+							$isphone= true;
+						}
+					}
+
+					if (!$isphone) {
+						if ($c->tnid) {	
+							$transUp =$c->changed;	
+							$c = node_load($c->tnid); // Make sure we have the canonical node and not a translation
+							$c->changed = $transUp ;
+							$node_list[$c->tnid] = $c;
+						} else {
+							$node_list[$c->nid] = $c;
+						}
+					}
+				}
+						
+				
+			}
+			else
+			{
+				  if ($c->tnid) {	
+					  $transUp =$c->changed;	
+					  $c = node_load($c->tnid); // Make sure we have the canonical node and not a translation
+					  $c->changed = $transUp ;
+					  $node_list[$c->tnid] = $c;
+				  } else {
+					  $node_list[$c->nid] = $c;
+				  }			
+			}
+		}
+		else
+		{
+			  if ($c->tnid) {	
+				  $transUp =$c->changed;	
+				  $c = node_load($c->tnid); // Make sure we have the canonical node and not a translation
+				  $c->changed = $transUp ;
+				  $node_list[$c->tnid] = $c;
+			  } else {
+				  $node_list[$c->nid] = $c;
+			  }			
+		}
+
+		
+
+		
+		
+		
+		
+    }
+	
+	$maxTimeStamp = max($timeAllAry);
+	$order_stamps = variable_get('dea_order', array());
+
+//	$personnel_contact_order_array = array();
+
+  //die('<pre>'.print_r($node_list,true).'</pre>');
+  
+  	//if($pre_theme_nid!=$theme_nid)
+		//$nodes[] = 
+    // Only return updates
+    foreach ($node_list as $node) {
+		
+
+
+        //if ($node->changed > $teststamp || ($node->type == 'themes' && $pre_theme_nid!=$theme_nid)) {
+		if ($node->changed > $teststamp) {
+			
+			
+            if ($node->changed > $latestupdate) {
+                $latestupdate = $node->changed;
+            }
+            $tmp_node = clone $node; // Just to make sure we don't get referential problems
+
+
+			
+            $fields = false;
+			
+            $fields = array(
+                 'title', 'body', 'teaser', 'field_store_title',
+            );
+			
+			$tmp_node->timestamp = $node->changed;
+
+
+
+       if ($node->type == 'main_category' && $node->nid ==$nid) {
+				
+				
+				if($chain_active!=1)
+				{
+					if($catTypes=="")
+					{				
+						$fields = array(
+							'title', 'body', 'teaser', 'field_title',
+						);
+						$tmp_node->timestamp = $timestamp;
+						
+						
+						$uid = $tmp_node->uid;
+						
+						$temp_user = user_load(array('uid' =>$tmp_node->uid));
+						$role = strtolower(implode(', ', array_slice($temp_user->roles, 1)));
+						$nodes[$role][$tmp_node->nid] = $tmp_node;
+						
+						$type = $tmp_node->field_category_dea_type[0][nid];
+						$typenode = node_load($type);
+						$titleType = $typenode->title;
+						
+						//set theme for old apps
+						$txtFld = "field_".strtolower($titleType)."_theme";
+						$tmp_node->$txtFld =  $tmp_node->field_theme;
+						
+						// set location for old apps
+						$txtLocation = "field_".strtolower($titleType)."_location";
+						$tmp_node->$txtLocation =  $tmp_node->field_location;
+					}
+					else {
+						
+	
+						$mainNode = node_load($node->field_category_dea_type[0]['nid']);	
+						$mainNodeTitle = $mainNode->title;
+						
+						if(is_array($catTypes) && in_array(strtolower($mainNodeTitle),$catTypes))
+						{
+							$fields = array(
+								'title', 'body', 'teaser', 'field_title',
+							);
+							$tmp_node->timestamp = $timestamp;
+							
+							
+							$uid = $tmp_node->uid; 
+							
+							$temp_user = user_load(array('uid' =>$tmp_node->uid));
+							$role = strtolower(implode(', ', array_slice($temp_user->roles, 1)));
+							$nodes[$role][$tmp_node->nid] = $tmp_node;
+							
+							$type = $tmp_node->field_category_dea_type[0][nid];
+							$typenode = node_load($type);
+							$titleType = $typenode->title;
+							//echo $titleType;die();
+							
+							//set theme for old apps
+							$txtFld = "field_".strtolower($titleType)."_theme";
+							$tmp_node->$txtFld =  $tmp_node->field_theme;
+							
+							// set location for old apps
+							$txtLocation = "field_".strtolower($titleType)."_location";
+							$tmp_node->$txtLocation =  $tmp_node->field_location;						
+						}
+						
+						
+					}
+					$tmp_node->chain_nid = "";	
+					
+					
+				}
+				else
+				{
+						
+					if($catTypes=="")
+					{
+						$edit_combine = check_edit_category($nid ,'Contact information');
+						if($edit_combine)
+						{
+							$fields = array(
+									'title', 'body', 'teaser', 'field_title',
+								);
+								 ;
+							
+							$temp_user = user_load(array('uid' =>$tmp_node->uid));
+							$role = strtolower(implode(', ', array_slice($temp_user->roles, 1)));
+							$pre_node = node_load($pre_nid);
+							
+							$tmp_node->nid =$pre_node->nid;
+												
+							$nodes[$role][$pre_nid] = $tmp_node;
+											
+						}
+						//check chain user and set the chain user id 
+						$tmp_node->chain_nid =  $nid;
+					}
+					if(is_array($catTypes) && in_array(strtolower($mainNodeTitle),$catTypes))
+					{
+						$edit_combine = check_edit_category($nid ,'Contact information');
+						if($edit_combine)
+						{
+							$fields = array(
+									'title', 'body', 'teaser', 'field_title',
+								);
+								 ;
+							
+							$temp_user = user_load(array('uid' =>$tmp_node->uid));
+							$role = strtolower(implode(', ', array_slice($temp_user->roles, 1)));
+							$pre_node = node_load($pre_nid);
+							
+							$tmp_node->nid =$pre_node->nid;
+												
+							$nodes[$role][$pre_nid] = $tmp_node;
+											
+						}
+						//check chain user and set the chain user id 
+						$tmp_node->chain_nid =  $nid;
+					
+					}
+
+					
+				}
+				$tmp_node->field_contact_email = $tmp_node->field_contact_email[0]['email'];	
+				$tmp_node->field_booking_email = $tmp_node->field_booking_email[0]['email'];	
+				
+				
+				$tmp_node = apply_nin_service($tmp_node, $fields);
+				
+
+            }
+
+			if($tmp_node->type == 'category_fields' && $tmp_node->field_main_id[0]['value']==$nid)
+			{			
+			
+				$fields = array(
+                 'title', 'body', 'teaser', 'field_store_title',
+            	);
+			//'field_mail_subject'
+
+				
+				$sub_cat = $tmp_node->field_category_type[0][nid];
+				$subCatNode = node_load($sub_cat);
+				$titleSub = $subCatNode->title;
+				
+				if($chain_active!=1)
+				{
+					
+					if($catTypes=="")
+					{
+						$tmp_node = set_temp_node($tmp_node,$sub_cat,$node);
+						$nodes[strtolower(str_replace(" ","_",$titleSub))][$tmp_node->nid] = $tmp_node;	
+					
+					}
+					else if( is_array($catTypes) && in_array(strtolower($titleSub),$catTypes) )
+					{
+						$tmp_node = set_temp_node($tmp_node,$sub_cat,$node);
+						$nodes[strtolower(str_replace(" ","_",$titleSub))][$tmp_node->nid] = $tmp_node;	
+						
+					}
+
+					$tmp_node->chain_nid = "";
+				}
+				else
+				{	
+					if($titleSub=="Sub Catalog")
+						$combine = check_combine_category($pre_nid ,615);
+					else if($titleSub=="Menu")
+						$combine = check_combine_category($pre_nid ,761);	
+					else
+						$combine = check_combine_category($pre_nid ,$sub_cat);
+						
+					if($combine && $titleSub!="Welcome")
+					{	
+						if($titleSub=="Offers")	
+						{	
+										
+							if($phone_id)
+							{
+								$phoneAry = $tmp_node->field_phone_id;
+								$isphone = false;
+								//die('<pre>'.print_r($phoneAry,true).'</pre>');
+								if($phoneAry)
+								{
+									foreach($phoneAry as $phoneID)
+									{
+										
+										if($phoneID['value']==$phone_id)
+										{
+											
+											$isphone= true;
+										}
+									}
+
+									if (!$isphone) {
+										
+										if($catTypes=="")
+										{
+											$tmp_node = set_temp_node($tmp_node,$sub_cat,$node);
+											$nodes[strtolower(str_replace(" ","_",$titleSub))][$tmp_node->nid] = $tmp_node;	
+										
+										}
+										else if( is_array($catTypes) && in_array(strtolower($titleSub),$catTypes) )
+										{
+											$tmp_node = set_temp_node($tmp_node,$sub_cat,$node);
+											$nodes[strtolower(str_replace(" ","_",$titleSub))][$tmp_node->nid] = $tmp_node;	
+											
+											
+										}
+									}
+								}
+								
+										
+								
+							}	
+							else
+							{	
+												
+								if($catTypes=="")
+								{
+									
+									$tmp_node = set_temp_node($tmp_node,$sub_cat,$node);
+									$nodes[strtolower(str_replace(" ","_",$titleSub))][$tmp_node->nid] = $tmp_node;	
+								
+								}
+								else if( is_array($catTypes) && in_array(strtolower($titleSub),$catTypes) )
+								{
+									$tmp_node = set_temp_node($tmp_node,$sub_cat,$node);
+									$nodes[strtolower(str_replace(" ","_",$titleSub))][$tmp_node->nid] = $tmp_node;	
+									
+									
+								}	
+							}
+						}
+						else
+						{	
+				
+							if($catTypes=="")
+							{
+								$tmp_node = set_temp_node($tmp_node,$sub_cat,$node);
+								$nodes[strtolower(str_replace(" ","_",$titleSub))][$tmp_node->nid] = $tmp_node;	
+							
+							}
+							else if( is_array($catTypes) && in_array(strtolower($titleSub),$catTypes) )
+							{
+								$tmp_node = set_temp_node($tmp_node,$sub_cat,$node);
+								$nodes[strtolower(str_replace(" ","_",$titleSub))][$tmp_node->nid] = $tmp_node;	
+								
+								
+							}	
+							
+						}
+						
+					}
+					else if($titleSub!="Welcome")
+					{
+						/*if($catTypes=="")
+						{
+							if($titleSub=="")
+							
+							$edit_combine = check_edit_category($pre_nid ,$titleSub);
+							if($edit_combine)
+							{
+								$tmp_node = set_temp_node($tmp_node,$sub_cat,$node);
+								
+								//get Previous user id
+								$pre_node = node_load($pre_nid);
+								
+								$cat_nid = get_category_id_from_user(3,$pre_node->uid);
+								$nodes[strtolower(str_replace(" ","_",$titleSub))][$tmp_node->nid] = $tmp_node;	
+	
+							}
+						}
+						else if( is_array($catTypes) && in_array(strtolower($titleSub),$catTypes) )
+						{		
+							$edit_combine = check_edit_category($pre_nid ,$titleSub);
+							if($edit_combine)
+							{
+								
+								$tmp_node = set_temp_node($tmp_node,$sub_cat,$node);
+								
+								//get Previous user id
+								$pre_node = node_load($pre_nid);
+								
+								$cat_nid = get_category_id_from_user(3,$pre_node->uid);
+								//$nodes[strtolower(str_replace(" ","_",$titleSub))][$cat_nid] = $tmp_node;	
+								$nodes[strtolower(str_replace(" ","_",$titleSub))][$tmp_node->nid] = $tmp_node;	
+	
+							}						
+						}*/
+						
+					}
+						
+					//check chain user and set the chain user id 
+
+					$tmp_node->chain_nid =  $nid;
+					
+				}
+
+
+				//change the fields array to single value				
+				
+
+				
+				if ($titleSub == 'News')
+				{		
+					$tmp_node->field_time['en'] = t(date("M",$node->changed)).date(" d, Y, G:i",$node->changed);
+					if(date("M",$node->changed)=="May")
+						$sMonth = "maj";
+					else
+						$sMonth =date("M",$node->changed);
+					$tmp_node->field_time['sv'] = t(strtolower($sMonth)).date(" d, Y, G:i",$node->changed);
+					
+					$user_langs = dea_get_user_all_languages($uid);
+					foreach($user_langs as $lang)
+					{
+						if($lang!="en" && $lang != 'sv')
+							$tmp_node->field_time[$lang] = t(date("M",$node->changed)).date(" d, Y, G:i",$node->changed);
+					}
+					if($teststamp==0)
+						$tmp_node->field_unread = 0;
+					else
+						$tmp_node->field_unread = 1;
+				}
+				if($titleSub=='Personnel Contact' || $titleSub=='About Us' || $titleSub=='Catalog' || $titleSub=='Category')
+				{
+					$view_name = strtolower(str_replace(" ","_",$titleSub));
+					$query = 'select * from {draggableviews_structure} where `nid`=%d and view_name = "%s" ';
+					$result = db_query($query,$tmp_node->nid,$view_name) ;
+					$drg = db_fetch_object($result);
+					$tmp_node->field_products_services_delta = $drg->value;			
+				}
+
+				$tmp_node = apply_nin_service($tmp_node, $fields);
+
+							
+				if ($titleSub == 'News')
+				{	
+					$lang_node = node_load($tmp_node->nid);
+					$userLang = dea_get_user_active_language($tmp_node->uid);
+					foreach($userLang as $lang)
+					{
+						if($tmp_node->title[$lang]=="")
+							$tmp_node->title[$lang] = $tmp_node->title[$lang_node->language];
+
+						if($tmp_node->body[$lang]=="")
+							$tmp_node->body[$lang] = $tmp_node->body[$lang_node->language];
+							
+						if($tmp_node->teaser[$lang]=="")
+							$tmp_node->teaser[$lang] = $tmp_node->teaser[$lang_node->language];	
+					}
+				
+				}
+				if($titleSub == 'Emails')
+				{
+					$tmp_node->field_email = $tmp_node->field_email[0]['email'];	
+				}
+				if($titleSub == 'Nearby Places')
+				{
+					$tmp_node->field_nearby_link = $tmp_node->field_nearby_link[0]['url'];	
+				}
+
+
+				
+			}
+			if((($tmp_node->type == 'themes' && $catTypes=="themes" ) || ($catTypes=="" && $tmp_node->type == 'themes')) && $chain_active!=1)
+			{	
+				$tmp_node->timestamp = $timestamp;
+				if($catTypes=="")
+				{
+					$nodes[str_replace(" ","_",$tmp_node->type)][$tmp_node->nid] = $tmp_node;
+				}
+				else if( is_array($catTypes) && in_array("themes",$catTypes))
+				{
+					$nodes[str_replace(" ","_",$tmp_node->type)][$tmp_node->nid] = $tmp_node;
+				}
+
+				$tmp_node = apply_nin_service($tmp_node, $fields);
+		
+				$nodes['themes'][$theme_nid] = $tmp_node;
+				
+				
+				
+			}
+			
+			if((($tmp_node->type == 'chain_welcome' && $catTypes=="chain welcome" ) || ($catTypes=="" && $tmp_node->type == 'chain_welcome')) )
+			{
+				$main_node = node_load($nid);
+				$tmp_node->timestamp = $timestamp;
+				$tmp_node->node_title = $main_node->title;
+				if($catTypes=="")
+				{
+					$nodes[str_replace(" ","_",$tmp_node->type)][$tmp_node->nid] = $tmp_node;
+				}
+				else if( is_array($catTypes) && in_array("chain welcome",$catTypes))
+				{
+					$nodes[str_replace(" ","_",$tmp_node->type)][$tmp_node->nid] = $tmp_node;
+				}
+
+				$tmp_node = apply_nin_service($tmp_node, $fields);
+		
+						
+			}
+			
+
+   }
+		
+		
+		
+		
+		
+		
+		$sub_cat = $node->field_category_type[0][nid];
+		$subCatNode = node_load($sub_cat);
+		$titleSub = $subCatNode->title;
+				
+		
+		//if ( $chain_active!=1) {
+						
+			//check timestamp for personnel_contact order and set temp array
+			$personnel_contact_order = $order_stamps['Personnel Contact'];
+		
+			if (($personnel_contact_order > $latestupdate && $titleSub == 'Personnel Contact') || $titleSub == 'Personnel Contact' )  
+			{
+		
+					$query = 'select * from {draggableviews_structure} where `nid`=%d ';
+					$result = db_query($query,$node->nid) ;
+					$drg = db_fetch_object($result);
+					$personnel_contact_order_array_t[$drg->value] = $node->nid;	
+	
+			}
+	
+			
+			//check timestamp for about_us order
+			$about_us_order = $order_stamps['About Us'];
+				
+			//if (($about_us_order > $latestupdate && $titleSub == 'About Us') && ($catTypes=="" || (is_array($catTypes) && in_array(strtolower("About Us"),$catTypes)) )  ) 
+			if (($about_us_order > $latestupdate && $titleSub == 'About Us') || $titleSub == 'About Us' ) 
+			{
+					$query = 'select * from {draggableviews_structure} where `nid`=%d and view_name = "about_us" ';
+					$result = db_query($query,$node->nid) ;
+					$drg = db_fetch_object($result);
+					$about_us_order_array_t[$drg->value] = $node->nid;				
+			}
+			
+			//check timestamp for catalog order
+			$catalog_order = $order_stamps['Catalog'];
+			if (($catalog_order > $latestupdate &&  $titleSub == 'Catalog' )|| $titleSub == 'Catalog' ) 
+			{
+				
+					$query = 'select * from {draggableviews_structure} where `nid`=%d and view_name = "catalog"  ';
+					$result = db_query($query,$node->nid) ;
+					$drg = db_fetch_object($result);
+					$catalog_order_array_t[$drg->value] = $node->nid;	
+					$catalog_order_array_a[$node->nid] = $drg->value;				
+			}
+			
+			//check timestamp for Category order
+			$category_order = $order_stamps['Category'];
+			if (($category_order > $latestupdate &&  $titleSub == 'Category' )|| $titleSub == 'Category' ) 
+			{
+					$query = 'select * from {draggableviews_structure} where `nid`=%d   ';
+					$result = db_query($query,$node->nid) ;
+					$drg = db_fetch_object($result);
+					$category_order_array_t[$drg->value] = $node->nid;					
+			}
+		//}
+		
+		
+
+		
+		
+		
+		// set order array if node save or update and after set the order array
+		$chain_config_time = variable_get('dea_chain_config','');
+		if ($node->changed > $teststamp  || $chain_config_time > $teststamp ) {
+
+		
+			$tmp_node = clone $node; // Just to make sure we don't get referential problems
+			if($tmp_node->type == 'category_fields')
+			{
+				$sub_cat = $tmp_node->field_category_type[0][nid];
+				$subCatNode = node_load($sub_cat);
+				$titleSub = $subCatNode->title;	
+				
+			
+				if(($titleSub=="About Us" || $about_us_order > $latestupdate) && ($catTypes=="" || (is_array($catTypes) && in_array(strtolower("About Us"),$catTypes)) ))
+					$about_us_order_array = $about_us_order_array_t;
+										
+				if (($personnel_contact_order > $latestupdate || $titleSub == 'Personnel Contact')	&& ($catTypes=="" || (is_array($catTypes) && in_array(strtolower("Personnel Contact"),$catTypes)) ) )
+					$personnel_contact_order_array = $personnel_contact_order_array_t;
+				
+				if (($catalog_order > $latestupdate || $titleSub == 'Catalog') && ($catTypes=="" || (is_array($catTypes) && in_array(strtolower("Catalog"),$catTypes)) ) ) 
+					$catalog_order_array = $catalog_order_array_t;
+				
+				if (($category_order > $latestupdate || $titleSub == 'Category') && ($catTypes=="" || (is_array($catTypes) && in_array(strtolower("Category"),$catTypes)) ) ) 
+					$category_order_array = $category_order_array_t;	
+					
+			}
+			
+		}
+		
+
+    }
+
+
+	if($catTypes=="")
+	{
+		
+		//get all locations in chain user
+	
+		$tmp_user = user_load($uid);
+		if($tmp_user->profile_user_type=="SCA")
+			$sca_nid = $nid;
+		else
+			$sca_nid = db_result(db_query("select sca_nid from {chain_users}   where `ca_nid`=%d ",$nid ));
+		
+/*		$chain_node = node_load($sca_nid);
+		if ($chain_node->changed > $teststamp)
+		{
+			$location = $chain_node->field_location[0];
+			$location['branch_name'] = $chain_node->title;
+			$nodes['branch_location_info'][$chain_node->nid] = $location;
+			$latestupdate = $chain_node->changed;
+		}*/
+		
+		$query = 'select ca_nid from {chain_users} where  sca_nid=%d ';
+		$result = db_query($query,  $sca_nid) ;
+	
+		while ($c = db_fetch_object($result)) {
+			
+			$chain_node = node_load($c->ca_nid);
+			if ($chain_node->changed > $teststamp)
+			{
+				$location = $chain_node->field_location[0];
+				$location['branch_name'] = $chain_node->title;
+				$location['nid'] = $chain_node->nid;
+				$location['branch_phone'] = $chain_node->field_contact_phone[0]['value'];
+				$nodes['branch_location_info'][$chain_node->nid] = $location;
+				$latestupdate = $chain_node->changed;
+			}
+			
+		}
+		
+		// Get Chain branches 	
+/*		$tmp_user = user_load($uid);
+		if($tmp_user->profile_user_type=="SCA")
+		{	
+			$query = 'select * from {chain_users} where `sca_uid`=%d;';
+			$result = db_query($query, $tmp_user->uid) or die("Could not get chain branches.");
+			while ($branch = db_fetch_object($result)) {
+				$tmp_node = node_load($branch->ca_nid);
+				$nodes['branch'][$branch->ca_nid] = $tmp_node->title;
+			}
+		}*/
+		
+		//get the combine data 
+		$chain_config_time= variable_get('dea_chain_config','');
+		if($chain_active!=1 && $chain_config_time > $teststamp )
+		{
+			
+			$fields = array(
+				 'title', 'body', 'teaser', 'field_store_title',
+				);
+
+			$query = 'select category_nid from {chain_access_config} where `ca_nid` = %d and `combine_chain` = %d  ';
+			$result = db_query($query, $nid,2) ;
+	
+			$sca_node = node_load($sca_nid);
+			$sca_user = user_load($sca_node->uid) ;
+	
+			while($row = db_fetch_object($result))
+			{
+				$subCatNode = node_load($row->category_nid);
+				$titleSub = $subCatNode->title;	
+					
+				$query2 = 'select  *  from {node} as n , content_type_category_fields as cf  where n.nid = cf.nid and `field_category_type_nid` = %d and uid = %d and language = "%s" ';
+				$result2 = db_query($query2, $row->category_nid,$sca_node->uid,$sca_user->language) ;
+							
+			
+				while($row2 = db_fetch_object($result2))
+				{
+					$cat_node = node_load($row2->nid);
+					
+					$cat_node->chain_nid = $sca_nid;	
+					
+					$cat_node = apply_nin_service($cat_node, $fields); // Include translation data
+
+			
+					if($titleSub=="Offers")	
+					{	
+						
+						if($phone_id)
+						{
+							
+							$phoneAry = $cat_node->field_phone_id;
+							
+							$isphone = false;
+							if($phoneAry)
+							{
+								if(count($phoneAry)==1)
+								{
+									if($phoneAry==$phone_id)
+										$isphone= true;
+								}
+								else
+								{
+									foreach($phoneAry as $phoneID)
+									{
+										
+										if($phoneID['value']==$phone_id)
+										{
+											$isphone= true;
+										}
+									}
+								}
+								if (!$isphone) {
+									$nodes[strtolower(str_replace(" ","_",$titleSub))][$cat_node->nid] = $cat_node;	
+								}
+								
+							}
+							
+					
+						}
+					}
+					else
+					{
+						$nodes[strtolower(str_replace(" ","_",$titleSub))][$cat_node->nid] = $cat_node;	
+					}				
+				}
+				
+	
+			}
+			
+	  		// get the  access configuration details
+			  $query = 'select * from {chain_access_config} where  ca_nid=%d and  category_nid not in (3,1667) and  category_name != "%s" ';
+			  $result = db_query($query,  $nid,'Contact information') ;
+		  
+		  	//ca_nid, category_nid, category_name, edit_store_admin, combine_chain
+			  while ($ca_row = db_fetch_object($result)) {
+				  if($ca_row->combine_chain==0)
+					  $access_config[strtolower(str_replace(" ","_",$ca_row->category_name))] = 0;
+				  else if($ca_row->combine_chain==1)
+					  $access_config[strtolower(str_replace(" ","_",$ca_row->category_name))] = 1;
+				  else if($ca_row->combine_chain==2 && $ca_row->category_name=="Category Order")	
+					  $access_config[strtolower(str_replace(" ","_",$ca_row->category_name))] = 2;
+				  else
+					  $access_config[strtolower(str_replace(" ","_",$ca_row->category_name))] = 1;
+			  }
+			  
+			  if ($chain_config_time >= $teststamp || !isset($chain_config_time)) 
+			  {
+				  $nodes['access_config_values'] = $access_config;
+			  }			
+			
+		}
+		
+		
+		//update the last update time
+		if (isset($chain_config_time) && $chain_config_time > $latestupdate) {			
+			$latestupdate = $chain_config_time;
+		}
+	
+		
+	}
+	else 
+	{
+		
+		//get the combine data 
+		$chain_config_time= variable_get('dea_chain_config','');
+		
+
+		if($chain_active!=1 && $chain_config_time > $teststamp)
+		{
+			$cur_user = user_load($uid);
+			$fields = array(
+				 'title', 'body', 'teaser', 'field_store_title',
+				);
+				
+			$sca_nid = db_result(db_query("select sca_nid from {chain_users}   where `ca_nid`=%d ",$nid ));	
+			$sca_node = node_load($sca_nid);
+			$sca_user = user_load($sca_node->uid) ;
+			
+			$query = 'select category_nid from {chain_access_config} where `ca_nid` = %d and `combine_chain` = %d  ';
+			$result = db_query($query, $nid,2) ;
+	
+			while($row = db_fetch_object($result))
+			{
+				$subCatNode = node_load($row->category_nid);
+				$titleSub = $subCatNode->title;	
+
+
+				if( is_array($catTypes) && in_array(strtolower($titleSub),$catTypes) )
+				{
+					
+					$query2 = 'select  *  from {node} as n , content_type_category_fields as cf  where n.nid = cf.nid and `field_category_type_nid` = %d and uid = %d  and language = "%s" ';
+					$result2 = db_query($query2, $row->category_nid,$sca_node->uid,$sca_user->language) ;
+								
+				
+					while($row2 = db_fetch_object($result2))
+					{
+						$cat_node = node_load($row2->nid);
+						$cat_node->chain_nid = $sca_nid ;	
+				
+						
+						$cat_node = apply_nin_service($cat_node, $fields); // Include translation data
+				
+						if($titleSub=="Offers")	
+						{	
+							if($phone_id)
+							{
+								$phoneAry = $cat_node->field_phone_id;
+								$isphone = false;
+								if($phoneAry)
+								{
+									if(count($phoneAry)==1)
+									{
+										if($phoneAry==$phone_id)
+											$isphone= true;
+									}
+									else
+									{
+										foreach($phoneAry as $phoneID)
+										{
+											
+											if($phoneID['value']==$phone_id)
+											{
+												$isphone= true;
+											}
+										}
+									}
+
+									if (!$isphone) {
+										$nodes[strtolower(str_replace(" ","_",$titleSub))][$cat_node->nid] = $cat_node;	
+									}
+									
+								}
+						
+							}
+						}
+						else
+						{
+							$nodes[strtolower(str_replace(" ","_",$titleSub))][$cat_node->nid] = $cat_node;	
+						}
+				
+										
+					}
+				}
+				
+	
+			}
+		}	
+		if($chain_active!=1 && is_array($catTypes) && in_array('access_config_values',$catTypes))
+		{
+	  		// get the  access configuration details
+			  $query = 'select * from {chain_access_config} where  ca_nid=%d and  category_nid not in (3,1667)  and  category_name != "%s" ';
+			  $result = db_query($query,  $nid,'Contact information') ;
+		  
+		  	//ca_nid, category_nid, category_name, edit_store_admin, combine_chain
+			  while ($ca_row = db_fetch_object($result)) {
+				  if($ca_row->combine_chain==0)
+					  $access_config[strtolower(str_replace(" ","_",$ca_row->category_name))] = 0;
+				  else if($ca_row->combine_chain==1)
+					  $access_config[strtolower(str_replace(" ","_",$ca_row->category_name))] = 1;
+				  else if($ca_row->combine_chain==2 && $ca_row->category_name=="Category Order")	
+					  $access_config[strtolower(str_replace(" ","_",$ca_row->category_name))] = 2;
+				  else
+					  $access_config[strtolower(str_replace(" ","_",$ca_row->category_name))] = 1;
+			  }
+
+				  $nodes['access_config_values'] = $access_config;		
+		}
+			
+	}
+	
+
+
+	//send welcome when store user has no welcome	
+	if($chain_active!=1)
+	{
+		
+		$welcomeCnt = db_result(db_query("select count(*) from {node} as n, {content_type_category_fields} as cf  where n.nid = cf.nid and `type`='%s'  and `uid` = %d and field_category_type_nid = 3 and field_main_id_value = %d ", 'category_fields', $uid,$nid));	
+
+		if ($welcomeCnt < 1) {
+
+			$sca_nid = db_result(db_query("select sca_nid from {chain_users}   where `ca_nid`=%d ",$nid ));
+			$sca_node = node_load($sca_nid);
+			$sca_user = user_load($sca_node->uid);
+
+			
+			$sca_welcome_nid = db_result(db_query("select n.nid from {node} as n, {content_type_category_fields} as cf where n.nid = cf.nid and `type`='%s'  and `uid` = %d  and field_category_type_nid = 3  and language = '%s' ", 'category_fields', $sca_user->uid,$sca_user->language));
+//print_r($sca_welcome_nid);die();
+			$sca_welcome = node_load($sca_welcome_nid);
+			
+			
+			if($sca_welcome->changed > $teststamp)
+			{
+				$sca_welcome = apply_nin_service($sca_welcome, $fields); // Include translation data
+				$nodes["welcome"][$sca_welcome->nid] = $sca_welcome;		
+			}
+			
+		}
+		
+	}
+	
+
+	if($personnel_contact_order > $latestupdate) 
+		$personnel_contact_order_array = $personnel_contact_order_array_t;
+		
+	if ($about_us_order > $latestupdate)
+		$about_us_order_array = $about_us_order_array_t;
+		
+	if ($catalog_order > $latestupdate)
+		$catalog_order_array = $catalog_order_array_t;	
+			
+	if ($category_order > $latestupdate)
+		$category_order_array = $category_order_array_t;
+				
+
+	if($maxTimeStamp>$latestupdate)
+		$latestupdate = $maxTimeStamp;
+
+
+
+	$personalCnt = db_result(db_query("select count(*) from {node} AS n LEFT JOIN {content_type_category_fields} as CT ON n.nid = CT.nid  where `field_category_type_nid`=%d and uid = %d and language = '%s' ",'353',$uid,$r->language ));
+	if($chain_active==1)
+	{
+		$j = count($order_arrays['personal']);
+		$newpersonnel_contact_Ary = $order_arrays['personal'];
+	}else
+		$j=0;
+	for($i=0;$i<$personalCnt;$i++)
+	{
+		if($personnel_contact_order_array[$i])
+		{
+			$newpersonnel_contact_Ary[$j] =  $personnel_contact_order_array[$i];
+			$j++;
+		}
+	}
+	if($personnel_contact_order_array  && $newpersonnel_contact_Ary)
+		$nodes['personnel_contact_order_array'] = array_values($newpersonnel_contact_Ary);
+	
+
+
+	$aboutCnt = db_result(db_query("select count(*) from {node} AS n LEFT JOIN {content_type_category_fields} as CT ON n.nid = CT.nid  where `field_category_type_nid`=%d and uid = %d and language = '%s' ",'5',$uid,$r->language ));
+	if($chain_active==1)
+	{
+		$j = count($order_arrays['about']);
+		$newabout_us_Ary = $order_arrays['about'];
+	}else
+		$j=0;
+	for($i=0;$i<$aboutCnt;$i++)
+	{
+		if($about_us_order_array[$i])
+		{
+			$newabout_us_Ary[$j] =  $about_us_order_array[$i];
+			$j++;
+		}
+	}
+	
+	if($about_us_order_array && $newabout_us_Ary)
+		$nodes['about_us_order_array'] = array_values($newabout_us_Ary);
+	
+		
+	$catalogCnt = db_result(db_query("select count(*) from {node} AS n LEFT JOIN {content_type_category_fields} as CT ON n.nid = CT.nid  where `field_category_type_nid`=%d and uid = %d and language = '%s' ",'615',$uid ,$r->language));
+	
+	
+
+	if($chain_active==1)
+	{
+		$j = count($order_arrays['catalog']);
+		if($j==0)
+		{
+			
+			$pre_node =  node_load($pre_nid);
+			
+			$catalog_order_array_t = getBranchCategoryOrder(615,'catalog',$pre_node->uid ,$pre_node->language);
+			//$catalog_order_array_t = $catalog_Ary;
+			$k = 0;
+			for($i=0;$i<count($catalog_order_array_t);$i++)
+			{
+				if($catalog_order_array_t[$i])
+				{
+					$catalog_Ary[$k] =  $catalog_order_array_t[$i];
+					$k++;
+				}
+			}
+			
+			$j = count($catalog_Ary);
+		}
+		else
+			$catalog_Ary = $order_arrays['catalog'];
+		//print_r($catalog_order_array);	
+	}
+	else
+	{	
+		$j=0;
+	}
+		
+		
+	for($i=0;$i<$catalogCnt;$i++)
+	{
+		if($catalog_order_array[$i])
+		{
+			$catalog_Ary[$j] =  $catalog_order_array[$i];
+			$j++;
+		}
+	}
+	//print_r($catalog_Ary);
+
+	if($catalog_order_array && $catalog_Ary)
+		$nodes['catalog_order_array'] = array_values($catalog_Ary);	
+			
+
+
+	$categoryCnt = db_result(db_query("select count(*) from {node} AS n LEFT JOIN {content_type_category_fields} as CT ON n.nid = CT.nid  where `field_category_type_nid`=%d and uid = %d and language = '%s' ",'761',$uid,$r->language ));
+		if($chain_active==1)
+		{
+			$j = count($order_arrays['category']);
+			$category_Ary = $order_arrays['category'];
+		}else
+			$j=0;
+		for($i=0;$i<$categoryCnt;$i++)
+		{
+			if($category_order_array[$i])
+			{
+				$category_Ary[$j] =  $category_order_array[$i];
+				$j++;
+			}
+		}
+		
+		if($category_order_array && $category_Ary)
+			$nodes['category_order_array'] = array_values($category_Ary);	
+
+
+	$order_arrays = array("personal"=>$newpersonnel_contact_Ary,"about"=>$newabout_us_Ary,"catalog"=>$catalog_Ary,"category"=>$category_Ary);
+	
+	//print_r($order_arrays);die();
+	// check if the theme change and load the data
+	if($themeok!=1 && $chain_active!=1)	
+	{
+		if($catTypes=="")
+		{
+			$tmenode = node_load($theme_nid);
+			
+			$tmenode = apply_nin_service($tmenode, $fields); // Include translation data
+			$nodes['themes'][$theme_nid] = $tmenode;
+		}
+		else if( is_array($catTypes) && in_array("themes",$catTypes))
+		{
+			$tmenode = node_load($theme_nid);
+			
+			$tmenode = apply_nin_service($tmenode, $fields); // Include translation data
+			$nodes['themes'][$theme_nid] = $tmenode;
+		}
+		
+	}
+	
+	// getting facilites for camping
+	$tmp_user = user_load($uid);
+	$role = implode(', ', array_slice($tmp_user->roles, 1));
+	if($role=="Camping")
+	{
+		
+		$query = 'select * from {node} where  type = "facilities" and  changed > %d ORDER BY changed';
+    $result = db_query($query, $teststamp) ;
+
+    while ($f_res = db_fetch_object($result)) {
+			$f_node = node_load($f_res->nid);
+			$f_node = apply_nin_service($f_node, $fields); // Include translation data
+			$nodes['facilities'][$f_node->nid] = $f_node;
+			
+		}
+	}
+	
+
+				
+				
+	
+/*	$tmp_user = user_load($uid);
+	if($tmp_user->profile_user_type=="SCA")
+	{
+		$query = 'select * from {chain_users} where `sca_nid` = %d ';
+    	$result = db_query($query, $nid) or die("Could not check for more recently updated nodes.");
+    	while($row = db_fetch_object($result))
+		{
+			$tmp_node = node_load($row->ca_nid);
+			if($tmp_node->changed > $latestupdate)
+				$latestupdate = $tmp_node->changed;
+		}
+	}
+	else
+	{
+		
+    	$sca_nid_tmp = db_result(db_query("select sca_nid from {chain_users} where `ca_nid`= %d  ",$nid));	
+		if($sca_nid_tmp)
+		{
+			$query = 'select * from {chain_users} where `sca_nid` = %d ';
+			$result = db_query($query, $sca_nid_tmp) or die("Could not check for more recently updated nodes.");
+			while($row = db_fetch_object($result))
+			{
+				$tmp_node = node_load($row->ca_nid);
+				if($tmp_node->changed > $latestupdate)
+					$latestupdate = $tmp_node->changed;
+			}			
+		}
+
+	}*/
+	   
+
+	
+
+	//die('<pre>'.print_r($order_stamps,true).'</pre>');
+    $delete_stamps = variable_get('dea_delete', array());
+//  echo '<pre>'.print_r($delete_stamps,true).'</pre>';
+    if (isset($delete_stamps[$uid]) && $delete_stamps[$uid] > $latestupdate) {
+        $latestupdate = $delete_stamps[$uid];
+    }
+	if (isset($order_stamps['Personnel Contact']) && $order_stamps['Personnel Contact'] > $latestupdate) {
+        $latestupdate = $order_stamps['Personnel Contact'];
+    }
+	if (isset($order_stamps['About Us']) && $order_stamps['About Us'] > $latestupdate) {
+        $latestupdate = $order_stamps['About Us'];
+    }
+	if (isset($order_stamps['Catalog']) && $order_stamps['Catalog'] > $latestupdate) {
+        $latestupdate = $order_stamps['Catalog'];
+    }
+	if (isset($order_stamps['Category']) && $order_stamps['Category'] > $latestupdate) {
+        $latestupdate = $order_stamps['Category'];
+    }
+	
+	
+	
+	$chain_config_time= variable_get('dea_chain_config','');	
+	if (isset($chain_config_time) && $chain_config_time > $latestupdate) {
+        $latestupdate = $chain_config_time;
+    }	
+	
+	
+	
+	
+	$chain = check_chain_user($uid);
+	
+	if($pre_latestupdate>$latestupdate)
+		$latestupdate = $pre_latestupdate;
+
+	if($chain)
+	{	
+		$updates = dea_service_get_updates($teststamp, $chain, $nids, $catTypes,$phone_id,1,$nodes,$nid,$latestupdate,$order_arrays);
+		return $updates;
+		exit();	
+	}
+	
+	
+	
+    $updates = array(
+        'deleted' => $deleted,
+        'updated' => $nodes,
+        'latestupdate' => $latestupdate,
+    );
+
+    return $updates;
+
+}
+
+/*
+ * Implements school app node stripping preset.
+ */
+
+function dea_service_service_strip_node() {
+    // Example for how to implement
+    $presets['school'] = array(
+        'exclude' => array(
+            'comment',
+            'moderate',
+            'sticky',
+            'tnid',
+            'translate',
+            'language',
+            'vid',
+            'revision_uid',
+            'log',
+            'revision_timestamp',
+            'format',
+            'data',
+            'picture',
+            'status',
+            'promote',
+            'created',
+            'changed',
+            'name',
+            'taxonomy',
+            'uid',
+        ),
+    );
+
+    return $presets;
+}
+
+function dea_service_get_interface_names() {
+    $names = array(
+        // Tabs
+        'welcome' => t('Welcome'),
+        'about_us' => t('About us'),
+        'news' => t('News'),
+        'contact' => t('Contact'),
+        'options' => t('Options'),
+		'catalog' => t('Catalog'),
+		'sub_catalog' => t('Sub Catalog'),
+		'offers' => t('Offers'),
+		'menu' => t('Menu'),
+		'rooms' => t('Rooms'),
+		'information' => t('Information'),
+
+        // Tabs - lower case
+/*        'lwelcome' => t('Welcome'),
+        'lproducts_services' => t('Products'),
+        'lpresentation' => t('Presentation'),
+        'lcontact' => t('About Us'),
+        'loptions' => t('Settings'),*/
+        // Other strings
+        'address' => t('Address'),
+		'email' => t('E-mail'),
+        'phone' => t('Phone'),
+        'route' => t('Route'),
+        'language' => t('Language'),
+		'important' => t('Important'),
+		'tweet' => t('Tweet'),
+		'nearby_places' => t('Nearby'),
+
+
+        'contact_us' => t('Contact'),
+        'close' => t('Close'),
+        'ok' => t('Ok'),
+        'cancel' => t('Cancel'),
+        'website' => t('Website'),
+		'yes' => t('Yes'),
+		'no' => t('No'),
+		
+
+        // Messages    
+        'please_wait' => t('Loading, Please wait...'),
+        'select_your_language' => t('Select your language'),
+        'web_service_is_not_available' => t('Web service is not available'),
+		
+        'button_book' => t('Important'),
+        'button_back' => t('Back'),
+		'button_website' => t('Website'),
+		'button_showmap' => t('Show Map'),
+		
+		'push_notification' => t('Push Notification'),
+        'mail_configuration_error' => t('E-Mail Configuration Error'),
+        'mail_configure_confirm' => t('Do you want to configure email now?'),		
+		
+		'call_confirmation_title' => t('Confirm Use the phone'),
+		'call_confirm_message' => t('Do you really want to dial the number'),
+		'call_make_new' => t('Do you want to call?'),
+
+        'warning' => t('Warning'),
+        'confirm' => t('Confirm'),
+        'discard' => t('Discard'),
+		
+		'email_subject_room_book' => t('Book Room'),
+		'email_body_room_book' => t('Hi....I want to book a  room in your school for <5> days on '),
+/*		'email_subject_table_book' => t('Book Table'),
+		'email_body_table_book' => t('Hi....I want to book a table in your school for <5> persons on '),
+		'email_subject_sauna_book' => t('Book Sauna'),
+		'email_body_sauna_book' => t('Hi....I want to book a Sauna in your school on'),*/
+		'email_subject_other_book' => t('Book'),
+		'email_body_other_book' => t('Hi....I want to book a <> in your school on'),
+		'email_confirmation_header' => t('Mail Sent'),
+		'email_confirmation_message' => t('The booking email message was sent.Stress somehow that the booking itself has not yet been confirmed'),
+		
+		
+		// new ones
+		'read_more' => t('Read more'),
+		'email_confirmation_header' => t('Mail Sent'),
+		'email_confirmation_message' => t('The email message was sent successfully'),
+		
+		
+				
+
+
+        'opening_hours' => t('Opening hours'),
+        'daily_special' => t('Daily special'),
+
+        // Days of the week
+        'sunday' => t('Sunday'),
+        'monday' => t('Monday'),
+        'tuesday' => t('Tuesday'),
+        'wednesday' => t('Wednesday'),
+        'thursday' => t('Thursday'),
+        'friday' => t('Friday'),
+        'saturday' => t('Saturday'),
+				
+		
+		/* restaurant */
+		'send' => t('Send'),
+		'label_booking_date' => t('Date'),
+		'label_booking_time' => t('Time'),
+		'label_booking_name' => t('Name'),
+		'label_booking_phone' => t('Telehone No'),
+		'label_booking_email' => t('Email'),
+		'label_mail_footer' => t('Best Regards'),
+		'book_table_warning' => t('You needs to book tables at least 2 days in advance'),
+		'Button_booktable' => t('Book Table'),
+		'no_offers' => t('You do not have any offers.'),
+        'email_subject' => t('Book Table'),
+        'email_body' => t('Request to book a table'),
+		'book_table_days_in_advance' => t('You need to book tables at least 2 days in advance.'),
+		'your_name' => t('Your name'),
+		'your_email' => t('Your email'),
+		'your_phone_number' => t('Your phone number'),
+		'book' => t('Book'),
+		'booking_date' => t('Date'),
+		'booking_time' => t('Time'),
+		'booking_name' => t('Name'),
+
+		
+		'offeruse_title' => t("Confirm use offer"),
+		'basic_offer_use_message' => t("Do you really want to use this offer, tap continue to use this offer"),
+		'public_offer_use_message' => t("Do you really want to use this offer,enter pin and tap continue to use this offer"),
+		'hidden_offer_use_message' => t("Do you really want to use this offer,enter pin provided by store and tap continue to use this offer"),
+		
+		'continue' => t("Continue"),
+		
+		'coupon_use_confirmation_message' => t("do you really want to use this coupon?"),
+		'coupon_pin_error_message' => t("Wrong pincode"),
+		
+		'offer_use_succeed_message' => t("Offer used!"),
+		
+		'button_done' => t("Done"),
+		
+		'basic_offer_use_message' => t("If you want to use this offer, tap Continue. This offer can only be used once."),
+		'public_offer_use_message' => t("If you want to use this offer, enter PIN and tap Continue."),
+		'hidden_offer_use_message' => t("If you want to use this offer, enter PIN provided by store and tap Continue."),	
+		
+		
+		'no_location_service' => t('No Location Service'),
+		'distance_too_far' => t('Distance Too Far'),	
+		'settings_failed' => t('Cannot launch settings, Pls goto settings and create an email acc'),
+		
+		'twitter_login_error'  => t('There was a problem with the login. Please try again later.'),
+		'no_internet' => t('No Internet Connection Available'),	
+		
+		'shops' => t('Shops'),	
+		'new_default_store' => t('Choose a new default store'),
+		'go_to_map' => t('Select from map'),	
+		'proceed' => t('Proceed'),	
+		'go_to_standard_shop' => t('Set as my home store'),	
+		'closest_stores' => t('Closest Stores'),
+		'continue_without_store' => t('Continue without store'),
+		'select_from_list' => t('Select form list'),	
+		'not_all_stores_available' => t('Not all stores of the chain/franchise is available in the app'),	
+		'select_your_store' => t('Select your store'),	
+		'i_cant_find_my_store' => t('I can\'t find my store'),	
+		'select_new_store' => t('Select new store'),	
+		'branch_selection_dialog_text' => t('Select new store from'),	
+		'map' => t('Map'),	
+		'list' => t('List'),	
+		'select_from_map' => t('Select from map'),
+		'when' => t('When'),
+		'persons' => t('Persons'),
+
+		'closest_camping' => t('Closest campings'),
+		'continue_without_camping' => t('Continue without camping'),
+		'not_all_campings_available' => t('Not all campings of the chain/franchise is available in the app'),
+		'select_your_camping' => t('Select your camping'),
+		'i_cant_find_my_camping' => t('I can\'t find my camping'),		
+		'select_new_camping' => t('Select new camping'),
+		'new_default_camping' => t('Choose a new default camping'),
+		'closest_restaurents' => t('Closest restaurents'),
+		'continue_without_restaurent' => t('Continue without restaurent'),
+		'not_all_restaurents_available' => t('Not all restaurents of the chain/franchise is available in the app'),
+		'select_your_restaurent' => t('Select your restaurent'),
+		'i_cant_find_my_restaurent' => t('I can\'t find my restaurent'),
+		'select_new_restaurent' => t('Select new restaurent'),
+		'new_default_restaurent' => t('Choose a new default restaurent'),
+		'seasons_title' => t('Season'),
+		'area_map' => t('Area Map'),
+		'resataurents' => t('Restaurents'),
+		'camps' => t('Camps'),
+		'google_analytics' => t('Google Analytics'),
+		'search' => t('Search'),
+
+    );
+
+
+    $langs = nin_service_get_languages();
+
+    $trans = array();
+
+    foreach ($names as $untrans => $translated) {
+        $trans[$untrans] = array();
+        foreach ($langs as $lang => $name) {
+            $string = locale($translated, $lang);
+            $trans[$untrans][$lang] = $string;
+        }
+    }
+
+    return $trans;
+}
+
+
+
+function dea_service_get_languages($nid) {
+
+	$node = node_load($nid);
+	$nid_lang = db_result(db_query("SELECT nid FROM {node} WHERE uid = %d AND type = 'profile_lang' LIMIT 0,1", $node->uid));
+	$node_lang = node_load($nid_lang);
+	
+	$langStr = "";
+	$last_key = end(array_keys($node_lang->field_site_langugae));
+
+	foreach( $node_lang->field_site_langugae as $key=>$langs)
+	{
+		if ($key == $last_key) 
+		{
+        	$langStr .= "'".$langs['value']."'";
+		}
+    	else
+			$langStr .= "'".$langs['value']."',";		
+	}
+
+    $result = db_query('SELECT * FROM {languages} WHERE language in ('.$langStr.')');
+	while ($row = db_fetch_object($result)) {
+	  $languages[$row->language] = $row->native;
+	}	
+	return $languages;
+}
+function dea_service_get_all_themes() {
+    $query = 'select * from {node} where `type`= "themes" ';
+    $result = db_query($query) ;
+	
+ while ($s = db_fetch_object($result)) {
+        $s = node_load($s->nid); // Get node info
+        if ($s->tnid) {
+            $s = node_load($s->tnid); // Make sure we have the canonical node and not a translation
+            $node_list[$s->tnid] = $s;
+        } else {
+            $node_list[$s->nid] = $s;
+        }
+    }
+foreach ($node_list as $node) {
+        //if ($node->changed > $teststamp || ($node->type == 'themes' && $pre_theme_nid!=$theme_nid)) {
+
+
+            $tmp_node = clone $node; // Just to make sure we don't get referential problems
+
+            $fields = false;
+
+
+
+            $tmp_node = apply_nin_service($tmp_node, $fields); // Include translation data        
+            $nodes[$tmp_node->nid] = $tmp_node;
+			
+
+    }	
+	return $nodes;	
+}
+	
+function dea_updateNewsFeeds($nid)
+{
+
+	$node = node_load($nid);
+	$uid = $node->uid;
+	
+	$query = 'select field_news_feed_value from {content_type_school} where `nid`=%d;';
+    $result = db_query($query, $nid) ;
+	$newsRow = db_fetch_object($result);
+	
+	
+	if($newsRow->field_news_feed_value)
+	{
+		
+		$xml = ($newsRow->field_news_feed_value);
+		
+		// Load XML. 
+		$xml = simplexml_load_file($xml);
+
+	  	// Grabbing the NameSpace URI for "itms" and "content" ...
+
+	 	foreach ($xml->channel->item as $item) { 
+			$ns_content = $item->children('http://purl.org/rss/1.0/modules/content/');
+		
+			$item_title = $item->title;
+			$item_desc = $item->description;
+			$item_content = $ns_content->encoded;
+			$item_date = $item->pubDate;
+			
+			$content= "";
+			if($item_content!="")
+				$content = $item_content;
+			else	
+				$content = $item_desc;
+	
+
+			$item_teaser =  substr(strip_tags($content),0,100);
+			
+			$pubDate = strtotime(strftime("%Y-%m-%d %H:%M:%S", strtotime($item_date)));
+			
+			$nwTime = strtotime("now");
+			$RSSDate = $node_main ->field_rss_date[0][value];
+	
+	
+			if($pubDate>$RSSDate)
+			{
+			  $query = "select COUNT(*) from {node} where `type`='%s'  and `title` = '%s' and `uid` = %d and created = %d";
+			  $num_rows  = db_result(db_query($query, 'news',$item_title,$uid,$pubDate)) ;
+			  
+			  if($num_rows)
+			  {
+				  break;
+			  }
+			  else
+			  {
+				  $node = new stdClass();
+	   
+				  //Main Node Fields
+				  $node->name = $item_title;
+						  
+				  $node->title = $node->name;
+				  $node->body = $content;
+				  $node->teaser = $item_teaser;				  
+				  $node->type = 'news'; //This can be any node type
+				  $node->created = $pubDate;
+				  $node->changed = $pubDate;
+				  $node->promote = 0; // Display on front page ? 1 : 0
+				  $node->sticky = 0;  // Display top of page ? 1 : 0
+				  $node->format = 1;  // 1:Filtered HTML, 2: Full HTML
+				  $node->status = 1 ;  // Published ? 1 : 0
+				  $node->language = $node_main->language;
+				  $node->uid = $uid;
+				  $node->field_important[0]['value'] = "Disable";
+				  
+				  
+				  node_save($node);
+			  }
+			}					
+  
+  
+	  	} 
+		//die();
+
+	}
+	dea_delete_old_news($nid,$uid);	
+	
+		
+}
+function dea_delete_old_news($nid,$uid)
+{
+	$query = "select COUNT(*) from {node} where `type`='%s'  and `uid` = %d ";
+   	$num_rows  = db_result(db_query($query, 'news',$uid)) ;	
+	//echo $num_rows." ";
+	if($num_rows>100)
+	{
+		$cnt = $num_rows-100;
+		//echo $cnt;
+		$query = "select nid from {node} where `type`='%s'  and `uid` = %d ORDER BY changed ASC  LIMIT %d ";
+		$result = db_query($query, 'news',$uid,$cnt);
+		$i=1;
+		while ($s = db_fetch_object($result)) {
+			//echo $nids." ";
+			$nids =  $s->nid;
+			if($i!=$cnt)
+				$nids .= ",";	
+		 $i++;		
+		}
+		//echo $nids;
+		$query2 = "delete from {node} where `nid`= %d ";
+		$result2 = db_query($query2, $nids);
+	}
+	//die();
+	
+		
+}
+
+function set_temp_node($tmp_node,$sub_cat,$node)
+{
+	$tempNode = new stdClass();
+									
+	$tempNode->nid =  $tmp_node->nid;
+	$tempNode->type =  $tmp_node->type;
+	$tempNode->language =  $tmp_node->language;
+	$tempNode->uid =  $tmp_node->uid;
+	$tempNode->status =  $tmp_node->status;
+	$tempNode->created =  $tmp_node->created;
+	$tempNode->changed =  $tmp_node->changed;
+	$tempNode->comment =  $tmp_node->comment;
+	$tempNode->promote =  $tmp_node->promote;
+	$tempNode->moderate =  $tmp_node->moderate;
+	$tempNode->sticky =  $tmp_node->sticky;
+	$tempNode->tnid =  $tmp_node->tnid;
+	$tempNode->translate =  $tmp_node->translate;
+	$tempNode->vid =  $tmp_node->vid;
+	$tempNode->status =  $tmp_node->status;
+	$tempNode->revision_uid =  $tmp_node->revision_uid;
+	$tempNode->title =  $tmp_node->title;
+	$tempNode->body =  $tmp_node->body;
+	$tempNode->revision_timestamp =  $tmp_node->revision_timestamp;
+	$tempNode->name =  $tmp_node->name;
+	
+	$catAry = array();
+	$catAry[$sub_cat] =$sub_cat;
+	$ser_cat = serialize($catAry);
+	
+	$query = "select * from {conditional_fields} where `trigger_values` = '%s'  ";
+	$result = db_query($query,$ser_cat);
+	while ($s = db_fetch_object($result)) {
+	  $fld_name = $s->field_name;
+	  $tempNode->$fld_name = $tmp_node->$fld_name;			
+	}			
+	
+	$tempNode->timestamp = $node->changed;
+	$tmp_node = $tempNode;
+	
+	return $tmp_node;
+
+}
+
+function check_chain_user($uid)
+{
+	$query = "select sca_nid from {chain_users} where `ca_uid`=%d   ";
+   	$sca_nid  = db_result(db_query($query,$uid)) ;
+	
+	if($sca_nid)
+		return $sca_nid;
+	else
+		return false;		
+}
+
+function check_combine_category($nid ,$cat)
+{
+	//$query = "select combine_chain from {chain_access_config} as c LEFT JOIN {chain_users} as cu ON c.ca_nid = cu.ca_nid 	 where `sca_nid`=%d  and `category_nid` = %d  ";
+	$query = "select combine_chain from {chain_access_config} 	 where `ca_nid`=%d  and `category_nid` = %d  ";
+   	$combine  = db_result(db_query($query,$nid,$cat)) ;	
+	if($combine)
+		return true;
+	else
+		return false;		
+}
+function check_edit_category($nid ,$cat)
+{
+	return true;	
+/*	$query = "select edit_store_admin from {chain_access_config} as c LEFT JOIN {chain_users} as cu ON c.ca_nid = cu.ca_nid 	 where `sca_nid`=%d  and `category_name` = '%s'  ";
+   	$combine  = db_result(db_query($query,$nid,$cat)) ;	
+						
+	if($combine)
+		return false;
+	else
+		return true;*/		
+}
+function check_edit_category_menu($nid ,$cat)
+{
+
+	$chain_user = check_sub_chain_user($nid);
+	if($chain_user)
+	{	
+		$edit = db_result(db_query("select edit_store_admin from {chain_access_config} where `category_name`='%s'  and `ca_nid` = %d ", $cat, $nid));
+						
+		if($edit)
+			return true;
+		else
+			return false;
+	}
+	else
+		return true;
+				
+}
+function check_sub_chain_user($nid)
+{
+	$chain_user = db_result(db_query("select count(*) from {chain_users} where `ca_nid` = %d ",  $nid));
+	if($chain_user>0)
+		return true;
+	else
+		return false;
+}
+function get_category_id_from_user($category_id,$uid)
+{
+	$cate_nid = db_result(db_query("select n.nid from {node} as n , {content_type_category_fields} as cf where n.nid = cf.nid  and  `type`='%s'  and `uid` = %d and field_category_type_nid = %d ", 'category_fields', $uid,$category_id));
+	
+	return $cate_nid;
+	
+}
+
+function dea_service_set_coupon($nid, $phoneid) {
+	
+
+	$node = node_load($nid);
+	
+
+	$query = 'SELECT max(delta) as delta FROM  {content_field_phone_id} WHERE nid = %d ';
+	$result = db_query($query, $nid) ;
+	$p = db_fetch_object($result);
+	
+	if($p)
+	{
+		$max_delta = $p->delta;
+		$max_delta = $max_delta + 1;
+	}
+	else
+		$max_delta = 0;
+		
+	$node->field_phone_id[$max_delta]['value']=$phoneid;
+	node_save($node);
+	return 1;	
+
+
+
+/*    $query = 'SELECT * FROM {content_type_offers} WHERE nid = %d ';
+
+    $result = db_query($query, $nid) or die("Could not get the phone id.");
+    $cp = db_fetch_object($result);
+    if ($cp) {
+
+        $query = 'SELECT max(delta) as delta FROM  {content_field_phone_id} WHERE nid = %d ';
+        $result = db_query($query, $nid) or die("Could not get the phone id.");
+        $p = db_fetch_object($result);
+        $max_delta = $p->delta;
+
+        $max_delta = $max_delta + 1;
+		
+		$query = 'SELECT vid FROM  {node} WHERE nid = %d ';
+        $result = db_query($query, $nid) or die("Could not get the phone id.");
+		$node = db_fetch_object($result);
+
+        $query = 'INSERT INTO {content_field_phone_id} SET `vid` = %d, `nid` = %d, `delta` =%d, `field_phone_id_value` ="%s" ';
+        $result = db_query($query, $node->vid, $nid, $max_delta, $phoneid) or die("Could not insert the phone details" . $query);
+        $cid = "content:" . $nid . ":" . $nid . "";
+
+        $query = 'DELETE FROM {cache_content} WHERE  cid = %d ';
+        $result = db_query($query, $cid) or die("Could not delete cache content");
+
+        return true;
+    }
+    else
+        return "Invalied nid";*/
+}
+function dea_set_language_branch($phoneid,$nid,$language,$app_type) {
+	
+	if($app_type=="ios")
+	{
+		$query = "UPDATE   {apn_keys} SET  	branch  = '%s' , language = '%s'  WHERE 	uid = '%s'  ";
+        $result = db_query($query, $nid, $language,$phoneid);
+				if (!$result)
+				watchdog('update apn keys ', 'cant update apn key ', array('!branch' => $nid, '!language' => $language, '!uid' => $phoneid));
+	}
+	else if($app_type=="android")
+	{
+		$sca_nid = db_result(db_query("select sca_nid from {chain_users} where `ca_nid`= %d ", $nid));
+		$query = "UPDATE   {gcm_keys} SET  	branch  = '%s' , language = '%s'  WHERE 	udid = '%s' and app = %d  ";
+    $result = db_query($query, $nid, $language,$phoneid,$sca_nid);	
+		if (!$result)
+				watchdog('update gcm keys ', 'cant update gcm key ', array('!branch' => $nid, '!language' => $language, '!udid' => $phoneid));			
+	}
+	return 1;	
+	
+}
+
+function getBranchCategoryOrder($nid,$view_name,$uid ,$language)
+{
+	$query = "select n.nid from {node} AS n LEFT JOIN {content_type_category_fields} as CT ON n.nid = CT.nid  where `field_category_type_nid`=%d and uid = %d and language = '%s' ";
+    $result = db_query($query, $nid, $uid,$language) ;
+	$order_array_t =  array();	
+	while ($branchs = db_fetch_object($result)) {
+		$query2 = 'select * from {draggableviews_structure} where `nid`=%d and view_name = "%s" ';
+		$result2 = db_query($query2,$branchs->nid,$view_name) ;
+		$drg = db_fetch_object($result2);
+		$order_array_t[$drg->value] = $branchs->nid;	
+		
+	}
+	return $order_array_t;
+
+	
+		
+}
+function apply_nin_service($node, $fields)
+{
+	$node = nin_service_include_translation($node, $fields); // Include translation data
+	$node = nin_service_strip_node($node);
+	$node = nin_service_category_image($node);
+	$node = nin_service_simplify($node);
+	return $node;
+}

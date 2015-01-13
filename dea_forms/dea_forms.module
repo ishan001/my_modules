@@ -1,0 +1,1297 @@
+<?php
+
+function dea_forms_menu() {
+
+    $items['welcome/file-upload/%'] = array(
+        'title' => t('welcome'),
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('dea_welcome_page_upload_form', 2),
+        'access callback' => TRUE,
+        'description' => t('welcome page'),
+        'weight' => -20,
+    );
+    $items['welcome/slideshow/%'] = array(
+        'title' => 'Image list',
+        'description' => 'Rearrange and add new images to the slideshow',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('customtable_drag_drop_form', 2),
+        'access arguments' => array('access content'),
+        'type' => MENU_NORMAL_ITEM
+    );
+    $items['welcome/slideshow/file-upload'] = array(
+        'title' => t('welcome slideshow image upload'),
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('dea_welcome_page_slideshow_upload_form'),
+        'access callback' => TRUE,
+        'description' => t('welcome page'),
+        'weight' => -20,
+    );
+    $items['dea/welcome/delete'] = array(
+        'title' => t('welcome'),
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('dea_fid_form_ajax'),
+        'access callback' => TRUE,
+        'access arguments' => array('access my_module via ajax'),
+        'type' => MENU_CALLBACK,
+    );
+		$items['add/videos'] = 	array(
+        'title' => t('Access videos page'),
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('add_videos_form_callback'),
+        'access callback' => TRUE,
+        'description' => t('access page'),
+        'weight' => -20,
+    );
+    return $items;
+}
+
+function dea_welcome_page_upload_form($form_state, $image_node) {
+    $image = node_load($image_node);
+
+
+    //set preview image
+    //load previously upload image or default iamge
+    if (!empty($image->field_splash_image[0]['filepath'])) {
+        $path = $image->field_splash_image[0]['filepath'];
+    } else {
+        $path = 'sites/all/themes/rubik/cube/c_images/iconaddimage.png';
+    }
+
+    // This is required to upload files.
+    // enctype="multipart/form-data" required by browsers to handle files.
+    $form = array(
+        '#attributes' => array('enctype' => "multipart/form-data"),
+    );
+
+
+    $form['file'] = array(
+        '#type' => 'image_upload_element',
+        '#title' => t('CHANGE SPLASH SCREEN'),
+        '#default_value' => $node->image,
+        '#image_preview_default_image' => $path,
+    );
+
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Submit'),
+    );
+
+    return $form;
+}
+
+function dea_welcome_page_upload_form_submit($form, &$form_state) {
+    $image_id = 0;
+    $image_id = upload_element_save($form_state['values']['file'], 'sites/default/files/', FILE_EXISTS_RENAME, 'imagecache_preset');
+    drupal_set_message(t('The form has been submitted and the image has been saved, filename'));
+
+    // set session id - keep spalsh image fid
+    // unset when save the school_form
+    $_SESSION['fid'] = $image_id;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function dea_forms_theme() {
+    return array(
+        'customtable_drag_drop_form' => array(
+            'arguments' => array('form' => NULL),
+        ),
+    );
+}
+
+function theme_customtable_drag_drop_form($form) {
+    $output = '';
+
+    foreach ($form['customtable_drag_drop'] as $id => $row) {
+        // It will skip the row,if $id is not an integer
+        if (is_numeric($id) === FALSE)
+            continue;
+        $rows = array();
+
+        // Rendering the Title,weight and description elements into the table
+
+        $rows[] = drupal_render($row['image']);
+        $rows[] = drupal_render($row['weight']);
+        $rows[] = drupal_render($row['delete']);
+
+
+        //Adding all rows to a particular array
+        $table_rows[] = array('data' => $rows, 'class' => 'draggable');
+    }
+    // Headers for the table
+    $header = array(
+        'Title',
+        'Image',
+        'delete'
+    );
+    // Table id
+    $table_id = 'customtable_drag_drop';
+
+    // Get the table drag and drop javaScript behavior
+    drupal_add_tabledrag($table_id, 'order', 'sibling', 'weight');
+    // Generates the theme for the table
+    $form['customtable_drag_drop'] = array(
+        '#type' => 'markup',
+        '#value' => theme('table', $header, $table_rows, array('id' => $table_id)),
+        '#weight' => '1',
+    );
+
+    $output = drupal_render($form);
+    return $output;
+}
+
+function customtable_drag_drop_form($form_state, $node) {
+
+
+    global $base_url;
+    $node_items = node_load($node);
+
+    $sql = "delete from cache_content where cid = 'content:$node_items->nid:$node_items->vid'";
+    db_query($sql);
+
+    // set $_SESSION['vid'] - use for re-arrange items on the list
+    $_SESSION['vid'] = $node_items->vid;
+
+    $presetname = "fullscreen_iphone";
+
+    $form['help_text'] = array(
+        '#type' => 'markup',
+        '#prefix' => "<div class='dea-info-text'>",
+        '#suffix' => '</div>',
+        '#value' => t("Draw each picture to re-configure the order of the pictures inside the slideshow") ,
+    );
+
+    //if already has a node
+    //update and save images and weight
+    if ($node > 0) {
+        $form['customtable_drag_drop']['#tree'] = TRUE;
+        $get_last_delta = 0;
+        // set $_SESSION['vid'] - use for re-arrange items on the list
+        $_SESSION['nid'] = $node;
+
+        //die('<pre>'.print_r($node_items,true).'</pre>');
+        //load currnt images assigns to the wellcome node
+        //while ($item = db_fetch_object($result)) {
+        if (count($node_items->field_welcome_picture) > 0) {
+
+            foreach ($node_items->field_welcome_picture as $field_image) {
+                //echo "a";die();
+                if (!empty($field_image['filepath'])) {
+                    imagecache_create_url($presetname, $field_image['filepath']);
+
+                    $form['customtable_drag_drop'][$get_last_delta] = array();
+                    $form['customtable_drag_drop'][$get_last_delta]['image'] = array(
+                        '#value' => theme_imagecache($presetname, $field_image['filepath']),
+                        '#type' => 'markup'
+                    );
+
+                    // Damith [start]
+                    $form['customtable_drag_drop'][$get_last_delta]['delete'] = array(
+                        '#type' => 'markup',
+                        '#prefix' => "<a class='delete-img' title='Click to Delete' fid=" . $field_image['fid'] . ">",
+                        '#suffix' => '</a>',
+                        '#value' => " ",
+                    );
+                    // Damith [end]
+
+                    $form['customtable_drag_drop'][$get_last_delta]['nid'] = array(
+                        '#type' => 'hidden',
+                        '#value' => $node,
+                    );
+
+                    $form['customtable_drag_drop'][$get_last_delta]['fid'] = array(
+                        '#type' => 'hidden',
+                        '#value' => $field_image['fid'],
+                    );
+
+                    // the "weight" field will be manipulated by the drag and drop table
+                    $form['customtable_drag_drop'][$get_last_delta]['weight'] = array(
+                        '#type' => 'weight',
+                        '#delta' => 10,
+                        '#default_value' => $get_last_delta,
+                        '#attributes' => array('class' => 'weight'),
+                    );
+                    $get_last_delta++;
+                }
+            }
+        }
+
+//insert images and keep weight
+//items save on the session array 
+        if (count($_SESSION['delta']) > 0) {
+            foreach ($_SESSION['delta'] as $ses) {
+
+                $file_objects = field_file_load($ses, TRUE);
+                imagecache_create_url($presetname, $file_objects['filepath']);
+
+                $form['customtable_drag_drop'][$get_last_delta] = array();
+                $form['customtable_drag_drop'][$get_last_delta]['image'] = array(
+                    '#value' => theme_imagecache($presetname, $file_objects['filepath']),
+                    '#type' => 'markup',
+                    '#id' => $file_objects['fid']
+                );
+
+                $form['customtable_drag_drop'][$get_last_delta]['nid'] = array(
+                    '#type' => 'hidden',
+                    '#value' => $node,
+                );
+
+                // Damith [start]
+                $form['customtable_drag_drop'][$get_last_delta]['delete'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='delete-img' title='Click to Delete' fid=" . $file_objects['fid'] . ">",
+                    '#suffix' => '</a>',
+                    '#value' => " ",
+                );
+                // Damith [end]
+
+                $form['customtable_drag_drop'][$get_last_delta]['fid'] = array(
+                    '#type' => 'hidden',
+                    '#value' => $file_objects['fid'],
+                );
+
+                // the "weight" field will be manipulated by the drag and drop table
+                $form['customtable_drag_drop'][$get_last_delta]['weight'] = array(
+                    '#type' => 'weight',
+                    '#delta' => 10,
+                    '#default_value' => $get_last_delta,
+                    '#attributes' => array('class' => 'weight'),
+                );
+                $get_last_delta++;
+            }
+            //$get_last_delta--;
+        }
+
+        for ($i = $get_last_delta; 6 > $i; ++$i) {
+            $file_objects = field_file_load(85, TRUE);
+            imagecache_create_url($presetname, $file_objects['filepath']);
+            //$form['customtable_drag_drop'][$i] = array();
+            $form[$i] = array(
+                '#value' => theme_imagecache($presetname, $file_objects['filepath']),
+                '#type' => 'markup',
+                '#attributes' => array('class' => 'no-image'),
+                '#prefix' => "<div class='no-image'>",
+                '#suffix' => '</div>',
+            );
+        }
+    } else {
+        $get_last_delta = 0;
+        foreach ($_SESSION['delta'] as $ses) {
+
+            $file_objects = field_file_load($ses, TRUE);
+            imagecache_create_url($presetname, $file_objects['filepath']);
+
+            $form['customtable_drag_drop'][$get_last_delta] = array();
+            $form['customtable_drag_drop'][$get_last_delta]['image'] = array(
+                '#value' => theme_imagecache($presetname, $file_objects['filepath']),
+                '#type' => 'markup',
+                '#id' => $file_objects['fid']
+            );
+
+            $form['customtable_drag_drop'][$get_last_delta]['nid'] = array(
+                '#type' => 'hidden',
+                '#value' => $node,
+            );
+
+            // Damith [start]
+            $form['customtable_drag_drop'][$get_last_delta]['delete'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='delete-img' title='Click to Delete' fid=" . $file_objects['fid'] . ">",
+                '#suffix' => '</a>',
+                '#value' => " ",
+            );
+            // Damith [end]
+
+            $form['customtable_drag_drop'][$get_last_delta]['fid'] = array(
+                '#type' => 'hidden',
+                '#value' => $file_objects['fid']
+            );
+
+            // the "weight" field will be manipulated by the drag and drop table
+            $form['customtable_drag_drop'][$get_last_delta]['weight'] = array(
+                '#type' => 'weight',
+                '#delta' => 10,
+                '#default_value' => $get_last_delta,
+                '#attributes' => array('class' => 'weight'),
+            );
+            $get_last_delta++;
+        }
+    }
+    popups_add_popups();
+    if ($get_last_delta < 6) {
+        $form['upload_link'] = array(
+            '#type' => 'markup',
+            '#prefix' => "<a href='$base_url/node/".arg(1)."/edit/Welcome/details'>",
+            '#suffix' => '</a>',
+            '#value' => t("Add welcome image"),
+            '#id' => 'my-class'
+        );
+    }
+
+    $form['cancel'] = array(
+        '#type' => 'button',
+        '#value' => t('Cancel'),
+        '#executes_submit_callback' => TRUE,
+        '#submit' => array('dea_forms_form_cancel'),
+        '#attributes' => array('class' => 'cancel'),
+
+    );
+
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Save'),
+    );
+
+    return $form;
+}
+
+function dea_fid_form_ajax() {
+    $fid = $_POST['id'];
+    $_SESSION['save_delete_fid'][$fid] = $fid;
+}
+
+function customtable_drag_drop_form_submit(&$form, &$form_state) {
+    //updating the weight values
+
+    if ($_SESSION['nid'] > 0) {
+
+        //delete slideshow images of relavent node
+        db_query("delete from {content_field_welcome_picture} WHERE nid = %d", $_SESSION['nid']);
+        $bit = 0;
+
+//die('<pre>'.print_r($form_state,true).'</pre>');
+        //get weight of the items as array
+        $weight_array = array();
+        foreach ($form_state['values']['customtable_drag_drop'] as $id => $item) {
+            $weight_array[] = $item['weight'];
+        }
+
+
+        foreach ($weight_array as $weight_array_sort) {
+
+            //re-arrange items set minus values
+            //add 10 to make positive
+            if ($weight_array_sort < 0) {
+                $weight_array_sort = $weight_array_sort + 10;
+            }
+
+            $fid = $form_state['values']['customtable_drag_drop'][$bit]['fid'];
+
+            if (isset($_SESSION['save_delete_fid']) && !(in_array($fid, $_SESSION['save_delete_fid']))) {
+                db_query("INSERT INTO {content_field_welcome_picture} (vid,nid,delta,field_welcome_picture_fid) VALUES
+		    (%d,%d,%d,%d)", $_SESSION['vid'], $_SESSION['nid'], $weight_array_sort, $fid);
+            }
+
+            if (!(isset($_SESSION['save_delete_fid'])) && count($_SESSION['save_delete_fid']) <= 0) {
+                db_query("INSERT INTO {content_field_welcome_picture} (vid,nid,delta,field_welcome_picture_fid) VALUES
+		    (%d,%d,%d,%d)", $_SESSION['vid'], $_SESSION['nid'], $weight_array_sort, $fid);
+            }
+
+            $bit++;
+        }
+
+        /* $tmpnode = node_load($_SESSION['nid']);
+
+          $tmpnode->changed = time();
+          node_save($tmpnode); */
+        $query = 'UPDATE {node} SET changed = %d WHERE nid = %d';
+        $result = db_query($query, time(), $_SESSION['nid']) ;
+				
+        //save images on the database
+        //unset all session values
+        unset($_SESSION['delta']);
+        unset($_SESSION['save_delete_fid']);
+        unset($_SESSION['vid']);
+        unset($_SESSION['nid']);
+    } else {
+        foreach ($form_state['values']['customtable_drag_drop'] as $id => $item) {
+            $file_id = $form_state['values']['customtable_drag_drop']['fid'];
+            $_SESSION['weight'][$file_id] = $form_state['values']['customtable_drag_drop'][$file_id]['weight'];
+        }
+    }
+}
+
+function dea_forms_form_cancel() {
+    unset($_SESSION['delta']);
+    unset($_SESSION['save_delete_fid']);
+}
+
+function dea_welcome_page_slideshow_upload_form($form_state) {
+    $form = array(
+        '#attributes' => array('enctype' => "multipart/form-data"),
+    );
+
+    $form['file'] = array(
+        '#type' => 'image_upload_element',
+        '#title' => t('UPLOAD IMAGES TO SLIDESHOW'),
+        '#default_value' => $node->image,
+        '#image_preview_default_image' => 'sites/all/themes/rubik/cube/c_images/iconaddimage.png',
+    );
+
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Submit'),
+    );
+
+    return $form;
+}
+
+/**
+ * Slide show image upload function
+ */
+function dea_welcome_page_slideshow_upload_form_submit($form, &$form_state) {
+    $image_id = 0;
+    $image_id = upload_element_save($form_state['values']['file'], 'sites/default/files/', FILE_EXISTS_RENAME, 'imagecache_preset');
+    //save fid on session array
+    //This upload from on pop up box
+    //Use when save the the node
+    $_SESSION['delta'][$image_id] = $image_id;
+    $_SESSION['fids'][$image_id] = $image_id;
+}
+
+/**
+ * 
+ * Get all active language for a user
+ */
+function dea_get_user_active_language($uid='') {
+    global $user;
+    global $language;
+
+    if ($uid == '') {
+        $user_id = $user->uid;
+        $lang = $user->language;
+    } else {
+        $user_id = $uid;
+        $tmp_user = user_load($user_id);
+        $lang = $tmp_user->language;
+    }
+    // Get active language for a login user
+    $result = db_query("SELECT s.field_site_langugae_value FROM {node} as n LEFT JOIN {content_field_site_langugae} as s ON n.nid = s.nid WHERE  type = '%s' AND uid = %d", "profile_lang", $user_id);
+
+    $lang_array = array();
+    while ($field = db_fetch_object($result)) {
+
+        //Remove current language from the list  
+        if ($lang != $field->field_site_langugae_value) {
+
+            //Get language name from the language table
+            $result_lan_name = db_query("select name from {languages} where language = '%s'", $field->field_site_langugae_value);
+            $field_lan = db_fetch_object($result_lan_name);
+
+            //Create a $lang_array[] with key
+            $lang_array[] = $field->field_site_langugae_value;
+        }
+    }
+
+    //Return language array
+    return $lang_array;
+}
+
+/**
+ * 
+ * Get all  languages for a user
+ */
+function dea_get_user_all_languages($uid='') {
+    global $user;
+
+    if ($uid == '') {
+        $user_id = $user->uid;
+    } else {
+        $user_id = $uid;
+        $tmp_user = user_load($user_id);
+    }
+    // Get active language for a login user
+    $result = db_query("SELECT s.field_site_langugae_value FROM {node} as n LEFT JOIN {content_field_site_langugae} as s ON n.nid = s.nid WHERE  type = '%s' AND uid = %d", "profile_lang", $user_id);
+
+    $lang_array = array();
+    while ($field = db_fetch_object($result)) {
+
+        //Get language name from the language table
+        $result_lan_name = db_query("select name from {languages} where language = '%s'", $field->field_site_langugae_value);
+        $field_lan = db_fetch_object($result_lan_name);
+
+        //Create a $lang_array[] with key
+        $lang_array[] = $field->field_site_langugae_value;
+    }
+
+    //Return language array
+    return $lang_array;
+}
+
+function dea_forms_form_alter(&$form, &$form_state, $form_id) {
+
+
+    global $user;
+    global $base_url;
+    $current_top_lang = dea_get_user_active_language();
+
+    $dea_type_nid = dea_get_current_user_dea_type_nid();
+		//Get user role
+		$roles_user = array();
+		foreach ($user->roles as $userroles) {
+				$roles_user[] = $userroles;
+		}
+    if ($form_id == "category_fields_node_form") {
+
+        $form['buttons']['#weight'] = 1000;
+		
+
+        if (isset($_SESSION['current_chain_user']))
+            $tmp_user_id = $_SESSION['current_chain_user'];
+
+        else
+            $tmp_user_id = $user->uid;
+        $nid_cat = db_result(db_query('SELECT nid from {node} where `uid` = %d and type="main_category" and language = "%s" ', $tmp_user_id, $user->language));
+
+        $cat = arg(3);
+        $catid = arg(1);
+
+        if ($cat == "Welcome") {
+
+					global $user; 
+			
+					$tmp_user = $user;
+					if (isset($_SESSION['current_chain_user']))
+					{
+            	$tmp_user = user_load($_SESSION['current_chain_user']);
+					}
+					
+					$chain_store_admin = is_chain_store_admin();
+			
+            //form text
+            $form['welcome']['text'] = array(
+                '#prefix' => '<p id="dea-welcome-title-text">',
+                '#suffix' => '</p>',
+                '#value' => t("Welcome to Din Egen App - Enterprise!</br>Here you can easily update the content of your ".$roles_user[1]." or chain.</br>
+          </br>Do you need help or support? Please contact our support under <a>support@nindev.se</a>"), // changed		  
+            );
+						
+					
+					if(( $tmp_user->profile_user_type !='SA' || $tmp_user->profile_user_type !='MSA'  ) &&  $tmp_user->profile_user_type =='SCA'  )
+					{
+						
+            // call popups js
+            popups_add_popups();
+            // This link will open on a pop up box
+            $form['welcome']['splash_link'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='popups btn-splash-image on-popups-options' href='$base_url/node/$nid_cat/add/spalsh_image'>",
+                '#suffix' => '</a>',
+                '#value' => t("Add splash image"),
+            );
+
+            //form text
+            $form['welcome']['text3'] = array(
+                '#prefix' => '<div class="info-text" id="dea-welcome-info-text1"><p>',
+                '#suffix' => '</p></div>',
+                '#value' => t("The welcome screen is what you see when you open the app and content is loaded."), // changed
+            );
+					}
+            //form text
+            $form['welcome']['text4'] = array(
+                '#prefix' => '<div class="info-text" id="dea-welcome-info-text2"><p>',
+                '#suffix' => '</p></div>',
+                '#value' => t("Press this button to add pictures to the slide show."), // changed
+            );
+						
+					
+            
+			
+			
+			
+            if(arg(1)!=3 && ( $chain_store_admin  || $user->profile_user_type !='SA' ) && $tmp_user->profile_user_type !="SCA"){           
+              //form text
+              $form['welcome']['text5'] = array(
+                  '#prefix' => '<div class="info-text" id="dea-welcome-info-text5"><p>',
+                  '#suffix' => '</p></div>',
+                  '#value' => t("Pressing the clear button removes the welcome content of this store and uses the general one from the chain/franchise."), // changed
+              );
+            }          
+
+            // This link will open on a pop up box
+            $form['welcome']['welcome_link'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='myclass btn-welcome-image' href='$base_url/node/$catid/edit/Welcome/details'>",
+                '#suffix' => '</a>',
+                '#value' => t("Add welcome image"),
+            );
+
+			$link_delete = $base_url . "/node/" . arg(1) . "/delete?destination=node/" . arg(1)  . "/edit/Welcome";
+
+			if(arg(1)!=3 && ( $chain_store_admin  || $user->profile_user_type !='SA' ) && $tmp_user->profile_user_type !="SCA")
+			{
+				$form['delete'] = array(
+					'#type' => 'markup',
+					'#prefix' => "<div id='welcome_cancel_button' ><a class='dea-cancel' title='Delete' href='" . $link_delete . "'>",
+					'#suffix' => '</a></div>',
+					'#value' => t("Clear welcome content"),
+					'#weight' =>  '15',
+				);
+			}
+
+			 
+
+			 
+        }
+        $catalog_value = $_GET['catalog'];
+				$room_value = $_GET['room'];
+				$category_value = $_GET['category'];
+        if (arg(4) == "translate") {
+            $form['field_main_catalog']['#default_value'][0]['value'] = $catalog_value;
+						$form['field_room_price_room']['#default_value'][0]['value'] = $room_value;
+						$form['field_menu_category']['#default_value'][0]['value'] = $category_value;
+        }
+				 
+				 
+				
+				
+    }
+    if ($form_id == "category_fields_node_form" || $form_id == "app_store_node_form") {
+        $form['field_image']['dea_file_upload_add_image'] = array(
+            '#type' => 'button',
+            '#value' => t('Add image'),
+            '#validate' => array(),
+        );
+    }
+    if ($form_id == "main_category_node_form" || $form_id == "category_fields_node_form") {
+
+        $form['buttons']['#weight'] = 1000;
+
+        /* if (arg(2) == "edit" && arg(3) == "About-Us" && arg(4) != "translate") {
+          $form['cancel'] = array(
+          '#type' => 'markup',
+          '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/507/views/About-Us/translate?language=$current_top_lang'>",
+          '#suffix' => '</a>',
+          '#value' => "Cancel",
+          );
+          } */
+        if (arg(2) == "edit" && arg(3) == "About-Us") {
+            if (arg(4) == "translate") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/507/views/About-Us/translate?language=$current_top_lang[0]'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            } else if (arg(4) == "details") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/5/edit/About-Us'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            } else {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/5/edit/About-Us'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            }
+        } else if (arg(1) == "add" && arg(2) == "views" && arg(3) == "About-Us" && arg(4) == "translate") {
+            $form['cancel'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/507/views/About-Us/translate?language=$current_top_lang[0]'>",
+                '#suffix' => '</a>',
+                '#value' => t("Cancel"),
+            );
+        }
+        if (arg(2) == "edit" && arg(3) == "About-Us") {
+            if (arg(4) == "translate") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/507/views/About-Us/translate?language=$current_top_lang[0]'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            } else if (arg(4) == "details") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/5/edit/About-Us'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            } else {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/5/edit/About-Us'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            }
+        } else if (arg(1) == "add" && arg(2) == "views" && arg(3) == "About-Us" && arg(4) == "translate") {
+            $form['cancel'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/507/views/About-Us/translate?language=$current_top_lang[0]'>",
+                '#suffix' => '</a>',
+                '#value' => t("Cancel"),
+            );
+        } else if (arg(2) == "edit" && arg(3) == "Category") {
+            if (arg(4) == "translate") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/761/edit/Category/translate?language=$user->language'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            } else if (arg(4) == "details") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/761/edit/Category'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            } else {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/761/edit/Category'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            }
+        } else if (arg(2) == "views" && arg(3) == "Category" && arg(4) == "translate") {
+            $form['cancel'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/761/edit/Category/translate?language=$user->language'>",
+                '#suffix' => '</a>',
+                '#value' => t("Cancel"),
+            );
+        } else if (arg(2) == "edit" && arg(3) == "Menu") {
+            if (arg(4) == "translate") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/762/edit/Menu/translate?language=$user->language'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            } else if (arg(4) == "details") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/762/edit/Menu/?category=" . $_REQUEST['category'] . "'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            } else {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/762/edit/Menu/?category=" . $_REQUEST['category'] . "'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            }
+        } else if (arg(2) == "views" && arg(3) == "Menu" && arg(4) == "translate") {
+            $form['cancel'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/762/edit/Menu/translate?language=$user->language'>",
+                '#suffix' => '</a>',
+                '#value' => t("Cancel"),
+            );
+        } else if (arg(2) == "edit" && arg(3) == "Sub-Catalog") {
+            if (arg(4) == "translate") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/1667/edit/Sub-Catalog/translate?language=$user->language'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            } else if (arg(4) == "details") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/1667/edit/Sub-Catalog/?catalog=" . $_REQUEST['catalog'] . "'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            } else {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/1667/edit/Sub-Catalog/?catalog=" . $_REQUEST['catalog'] . "'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            }
+        } else if (arg(2) == "views" && arg(3) == "Sub-Catalog" && arg(4) == "translate") {
+            $form['cancel'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/1667/edit/Sub-Catalog/translate?language=$user->language'>",
+                '#suffix' => '</a>',
+                '#value' => t("Cancel"),
+            );
+        }else if (arg(2) == "views" && arg(3) == "Room-Price" && arg(4) == "translate") {
+            $form['cancel'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/1043/edit/Room-Price/translate?language=$user->language'>",
+                '#suffix' => '</a>',
+                '#value' => t("Cancel"),
+            );
+        } else if (arg(2) == "edit" && arg(3) == "Room-Price") {
+            if (arg(4) == "translate") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/1043/edit/Room-Price/translate?language=$user->language'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            }  else {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/1043/edit/Room-Price/?room=" . $_REQUEST['room'] . "'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            }
+        } else if ((arg(3) == "Personnel-Contact" && arg(4) == "edit-view" || arg(3) == "Personnel-Contact" && arg(4) == "details") || (arg(3) == "Emails" || arg(3) == "Phone")) {
+            $form['cancel'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/$dea_type_nid/edit/Contact/main-view'>",
+                '#suffix' => '</a>',
+                '#value' => t("Cancel"),
+            );
+        } else if (arg(2) == "edit" && arg(3) == "Catalog") {
+            if (arg(4) == "translate") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/615/edit/Catalog/translate?language=$user->language'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            } else {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/615/edit/Catalog/main-view'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            }
+        } else if (arg(4) == "translate" && arg(3) == "Catalog" && arg(2) == "views") {
+            $form['cancel'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/615/edit/Catalog/translate?language=$user->language'>",
+                '#suffix' => '</a>',
+                '#value' => t("Cancel"),
+            );
+        } else if (arg(4) == "translate" && arg(3) == "News" && arg(2) == "views") {
+            $form['cancel'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/354/edit/News/translate?language=$user->language'>",
+                '#suffix' => '</a>',
+                '#value' => t("Cancel"),
+            );
+        } else if (arg(3) == "Offers" && (arg(2) == "edit" || arg(2) == "views")) {
+            if (arg(4) == "translate") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/616/edit/Offers/translate?language=$user->language'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            } else {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/616/edit/Offers'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            }
+        } else if (arg(3) == "Rooms" && (arg(2) == "edit" || arg(2) == "views")) {
+            if (arg(4) == "translate") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/4/edit/Rooms/translate?language=$user->language'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            } else {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/4/edit/Rooms'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            }
+        } else if (arg(3) == "Information" && (arg(2) == "edit" || arg(2) == "views")) {
+            if (arg(4) == "translate") {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/356/edit/Information/translate?language=$user->language'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            } else {
+                $form['cancel'] = array(
+                    '#type' => 'markup',
+                    '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/356/edit/Information'>",
+                    '#suffix' => '</a>',
+                    '#value' => t("Cancel"),
+                );
+            }
+        } else {
+            $form['cancel'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='dea-cancel dea-cancel-refresh' title='Cancel' href=''>",
+                '#suffix' => '</a>',
+                '#value' => t("Cancel"),
+            );
+        }
+    }
+
+    if (arg(2) == "edit" && arg(3) == "News") {
+        if (arg(4) == "translate") {
+            $form['cancel'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='dea-cancel' title='Cancel' href='$base_url/node/354/edit/News/translate?language=$user->language'>",
+                '#suffix' => '</a>',
+                '#value' => t("Cancel"),
+            );
+        } else {
+            $form['cancel'] = array(
+                '#type' => 'markup',
+                '#prefix' => "<a class='dea-cancel dea-news-cancel' title='Cancel' href='$base_url/node/354/edit/News'>",
+                '#suffix' => '</a>',
+                '#value' => t("Cancel"),
+            );
+        }
+    }
+    if (arg(2) == "edit" && arg(3) == "Nearby-Places") {
+        $form['cancel'] = array(
+            '#type' => 'markup',
+            '#prefix' => "<a class='dea-cancel dea-nearby-places-cancel' title='Cancel' href='$base_url/node/357/edit/Nearby-Places'>",
+            '#suffix' => '</a>',
+            '#value' => t("Cancel"),
+        );
+    }
+	if (arg(2) == "edit" && arg(3) == "Welcome" && arg(4) == "details") {
+        $form['cancel'] = array(
+            '#type' => 'markup',
+            '#prefix' => "<a class='dea-cancel dea-nearby-places-cancel' title='Cancel' href='$base_url/node/".arg(1)."/edit/Welcome'>",
+            '#suffix' => '</a>',
+            '#value' => t("Cancel"),
+        );
+    }
+		if($form_id=="videos_node_form")
+		{
+			$form['buttons']['#weight'] = 1000;
+			if(isset($_REQUEST['category']))
+			{
+				$form['field_video_category']['#default_value']['value'] = $_REQUEST['category'];
+			}
+			 	
+		}
+		
+}
+
+function dea_news_form(&$form_state) {
+    $node_id = dea_get_current_user_dea_type_nid();
+
+    $node = node_load($node_id);
+
+
+    $form['news']['node_id'] = array(
+        '#type' => 'hidden',
+        '#default_value' => $node_id,
+    );
+
+    $form['news']['news_feed'] = array(
+        '#type' => 'textfield',
+        '#default_value' => $node->field_news_feed[0]['value'],
+        '#size' => 60,
+    );
+
+
+    $options = array(
+        'Enabled' => t('Always push news'),
+        'Disabled' => t('Never push news')
+    );
+
+    $form['news']['push_notification'] = array(
+        '#type' => 'radios',
+        '#options' => $options,
+        '#default_value' => $node->field_push_notification[0]['value'],
+    );
+
+    $form['news']['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Save'),
+    );
+
+    return $form;
+}
+
+
+function dea_news_form_submit($form, &$form_state) {
+    global $user;
+    global $language;
+
+    $values = $form_state['values'];
+
+    $node = node_load($values['node_id']);
+
+    $node->field_news_feed = array(
+        0 => array(
+            'value' => $form_state['values']['news_feed'],
+        ),
+    );
+
+    $node->field_push_notification = array(
+        0 => array(
+            'value' => $form_state['values']['push_notification'],
+        ),
+    );
+
+
+    if ($node = node_submit($node)) {
+        node_save($node);
+    }
+}
+
+function dea_get_current_user_dea_type_nid() {
+    global $user;
+    global $language;
+
+    $temp_user = $user;
+    if (isset($_SESSION['current_chain_user'])) {
+        $temp_user = user_load(array('uid' => $_SESSION['current_chain_user']));
+    }
+
+    $result = db_query("SELECT nid,vid FROM {node} WHERE type = '%s' AND uid = %d AND language = '%s'", "main_category", $temp_user->uid, $user->language);
+
+    while ($field = db_fetch_object($result)) {
+        return $field->nid;
+        break;
+    }
+}
+
+function dea_get_current_user_dea_type_nid2() {
+    global $user;
+    global $language;
+    $result = db_query("SELECT nid,vid FROM {node} WHERE type = '%s' AND uid = %d AND language = '%s'", "main_category", $user->uid, $user->language);
+
+    while ($field = db_fetch_object($result)) {
+        return $field->nid;
+        break;
+    }
+}
+
+function dea_get_current_user_dea_type_nid3($lang="") {
+    global $user;
+    global $language;
+
+		if($lang=="")
+		{
+			$lang = $language->language;
+		}
+    $temp_user = $user;
+    if (isset($_SESSION['current_chain_user'])) {
+        $temp_user = user_load(array('uid' => $_SESSION['current_chain_user']));
+    }
+    $result = db_query("SELECT nid,vid FROM {node} WHERE type = '%s' AND uid = %d AND language = '%s'", "main_category", $temp_user->uid,$lang );
+
+    while ($field = db_fetch_object($result)) {
+        return $field->nid;
+        break;
+    }
+}
+
+function dea_add_contact_form(&$form_state) {
+    $node_id = dea_get_current_user_dea_type_nid();
+
+    $node = node_load($node_id);
+
+    $form['contact']['school_id'] = array(
+        '#type' => 'hidden',
+        '#value' => $node_id,
+    );
+
+    $form['contact']['name_contact'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Name'),
+        '#size' => 40,
+    );
+
+    $form['contact']['title_contact'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Title'),
+        '#size' => 25,
+    );
+
+    $form['contact']['cancel_contact'] = array(
+        '#type' => 'markup',
+        '#prefix' => "<a class='dea-cancel' title='Cancel' href=''>",
+        '#suffix' => '</a>',
+        '#value' => t("Cancel"),
+    );
+
+    $form['contact']['submit_contact'] = array(
+        '#type' => 'submit',
+        '#value' => t('Save'),
+    );
+
+    return $form;
+}
+
+function dea_add_contact_form_validate($form, &$form_state) {
+    $title = $form_state['values']['title_contact'];
+    $name = $form_state['values']['name_contact'];
+
+    if (!$title) {
+        form_set_error('title_contact', t('Please enter title.'));
+    }
+
+    if (!$name) {
+        form_set_error('name_contact', t('Please enter name.'));
+    }
+}
+
+function dea_add_contact_form_submit($form, &$form_state) {
+
+    $values = $form_state['values'];
+    global $user;
+    global $language;
+
+    $node = new stdClass();
+    $node->created = time();
+
+    //Main Node Fields
+    $node->title = $values['title_contact'];
+    $node->type = 'personnel_contact'; //This can be any node type
+    $node->uid = $user->uid;
+    //$node->changed = $node->created;
+    $node->format = 2;  // 1:Filtered HTML, 2: Full HTML
+    $node->status = 1; // Published ? 1 : 0
+    $node->language = $language->language;
+
+    $node->field_personnel_name = array(
+        0 => array(
+            'value' => $values['name_contact'],
+        ),
+    );
+
+    $node->field_personnel_school['value'] = $values['school_id'];
+
+    if ($node = node_submit($node)) {
+        node_save($node);
+    }
+}
+
+function dea_forms_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+
+    if (($op == "insert" || $op == "update" ) && $node->type == "category_fields") {
+
+        $type = $node->field_category_type[0]['nid'];
+
+        if ($type == 3) {
+
+
+            global $user;
+            $role = implode(', ', array_slice($user->roles, 1));
+            $fldType = "field_" . $role;
+            $nidType = $node->$fldType;
+
+            $nid = $nidType['value'];
+
+            if ($_SESSION['fid'] > 0) {
+
+                $node = node_load($nid);
+                //Load file object 
+                $file_array_load = field_file_load($_SESSION['fid'], TRUE);
+
+                $node->field_splash_image = array($file_array_load);
+
+                // unset session - splash image fid
+                // After save the spalsh image
+                unset($_SESSION['fid']);
+
+
+
+                node_save($node);
+            }
+        }
+    }
+    if (($op == "insert" || $op == "update" ) && $node->type == "category_fields") {
+        
+    }
+    if ($op == "delete" && $node->field_category_type[0]['nid'] == "354") {
+        $_REQUEST['destination'] = $base_url . "/node/354/edit/News";
+    }
+}
+function is_chain_store_admin($uid="")
+{
+	if($uid == "")
+	{
+		global $user;
+		$uid = $user->uid;
+	}
+	$Cnt = db_result(db_query("select count(*) from {chain_users} where `ca_uid`=%d  ", $uid));
+	if($Cnt>0)
+		return true;
+	else
+		return false;
+	
+	
+}
+/**
+ * 
+ * Get all active language for a user
+ */
+function get_user_all_languages($uid="") {
+	
+	if($uid=="")
+	{
+    	global $user;
+		$uid = $user->uid;
+	}
+
+    // Get active language for a login user
+    $result = db_query("SELECT s.field_site_langugae_value FROM {node} as n LEFT JOIN {content_field_site_langugae} as s ON n.nid = s.nid WHERE  type = '%s' AND uid = %d", "profile_lang", $uid);
+
+    $lang_array = array();
+    while ($field = db_fetch_object($result)) {
+	  //Get language name from the language table
+	  $result_lan_name = db_query("select name from {languages} where language = '%s'", $field->field_site_langugae_value);
+	  $field_lan = db_fetch_object($result_lan_name);
+  
+	  //Create a $lang_array[] with key
+	  $lang_array[$field->field_site_langugae_value] = $field_lan->name;
+    }
+
+    //Return language array
+    return $lang_array;
+}
+function add_videos_form_callback()
+{
+	global $base_url;
+	 $query = 'select * from {node} where `type`="%s"  order by title ';
+   $result = db_query($query, 'category') ;
+
+    while ($row = db_fetch_object($result)) {
+				$ary[$row->nid] =  $row->title;			
+		}
+		$ary[1] =  'Navigation';	
+		$ary[2] =  'Contact';	
+		
+		natcasesort($ary);
+		foreach($ary as $key => $row)
+		{
+
+			$nid = db_result(db_query("select n.nid from {node} as n left join {content_type_videos} as v on n.nid=v.nid  where `type`='%s'  and `field_video_category_value` = %d ", 'videos', $key));
+
+			if($nid)
+			{
+				 $link = "<a href='".$base_url."/edit/".$nid."/video-link'  >".$row."</a>";
+			}
+			else
+			{
+				$link = "<a href='".$base_url."/add/video-link?category=".$key."' > ".$row."</a>" ;
+			}
+
+				$video_ovw_item = "<div class='dea-video-wrapper'>" .
+                t($link).
+                "</div>";
+
+        $form['markup_' . $key] = array(
+            '#value' =>$video_ovw_item
+        );
+		}
+		
+	return $form;
+}

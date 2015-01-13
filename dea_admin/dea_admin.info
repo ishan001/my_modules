@@ -1,0 +1,4 @@
+name = Dea admin
+description = Dea admin storage base to store uids for store admins with multiple stores
+package = "DEA"
+core = 6.x

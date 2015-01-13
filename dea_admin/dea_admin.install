@@ -1,0 +1,45 @@
+<?php
+
+function dea_admin_schema() {
+  // We use this table to store which user
+  // is an admin for multiple stores.
+  $schema['dea_admin'] = array(
+    'description' => 'The base table to store which admin is handling which store',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'length' => 11,
+        'description' => 'incremental identifier',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'length' => 11,
+      ),
+      'data' => array(
+        'type' => 'text',
+				'serialize' => TRUE,
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+  
+  return $schema;
+}
+
+function dea_admin_install() {
+  drupal_install_schema('dea_admin');
+}
+
+function dea_admin_uninstall() {
+  drupal_uninstall_schema('dea_admin');
+}
+
+/**
+ * Update, add new column in dea_admin
+ * that is more useful than the current.
+ */
+function dea_admin_update_6000() {
+  $ret = array();
+  db_add_field($ret, 'dea_admin', 'data', array('type' => 'text', 'size' => 'big', 'not null' => TRUE));
+  return $ret;
+}

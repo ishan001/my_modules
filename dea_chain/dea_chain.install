@@ -1,0 +1,75 @@
+<?php
+ 
+function dea_chain_schema() {
+  $schema['chain_users'] = array(
+    'description' => t('The base table for nodes.'),
+    'fields' => array(
+      'sca_nid' => array(
+        'description' => t('Store chanin admin store id.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE),
+      'sca_uid' => array(
+        'description' => t('Store chanin admin user id'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE),
+      'ca_nid' => array(
+        'description' => t('Store admin nid'),
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE),
+	  'ca_uid' => array(
+        'description' => t('Store admin nid'),
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE),
+      ),
+    );
+
+	$schema['chain_access_config'] = array(
+    'description' => t('chain accss values.'),
+    'fields' => array(
+      'ca_nid' => array(
+        'description' => t('Store admin nid.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE),
+      'category_nid' => array(
+        'description' => t('Category Nid'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE),
+      'category_name' => array(
+        'description' => t('Category Name'),
+        'type' => 'varchar',
+    	'not null' => TRUE,
+    	'length'  => '250'),
+	  'edit_store_admin' => array(
+        'description' => t('Can Edit store admin'),
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE),
+	  'combine_chain' => array(
+        'description' => t('combine chain and store data'),
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE),
+      ),
+	  
+    );
+  return $schema;
+}
+
+function dea_chain_install() {
+  // Create my tables.
+  drupal_install_schema('dea_chain');
+}
+
+function dea_chain_uninstall() {
+  // Drop my tables.
+  //drupal_uninstall_schema('dea_chain');
+}	
+	
+	
+?>

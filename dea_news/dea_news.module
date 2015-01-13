@@ -1,0 +1,264 @@
+<?php
+function dea_news_menu() {
+  $items['dea/news/add'] = array(
+    'title' => 'Image list',
+    //'description' => 'Rearrange and add new images to the slideshow',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('news_add_form'),
+    'access arguments' => array('access content'),
+    'type' => MENU_NORMAL_ITEM
+  );
+
+  return $items;
+}
+
+/*
+ * Return current user school id ot hotel id
+ * Check current user language and id
+ */
+function news_get_main_catrgoty_id() {
+  global $user;
+  $node_cat_dea_type = db_result(db_query('SELECT nid from {node} where uid = %d and language = "%s" and 
+    type="main_category" ', $user->uid , $user->language));
+	
+  return $node_cat_dea_type;
+}
+
+/*
+ * Return current user role id ot hotel id
+ * Check current user language and id
+ */
+function news_get_user_role_id() {
+  global $user;
+  
+  $user_role = array();
+  foreach($user->roles as $roles) {
+	  $user_role[] = $roles;
+  }
+
+  $user_role_id = db_result(db_query('SELECT nid from {node} where title = "%s" and 
+    type="dea_type"', $user_role[1]));
+	
+ return $user_role_id;
+}
+
+
+/* Return current user role id ot hotel id
+ * Check current user language and id
+ */
+function news_get_user_role_name() {
+  global $user;
+  
+  $user_role = array();
+  foreach($user->roles as $roles) {
+	  $user_role[] = $roles;
+  }
+	
+ return $user_role[1];
+}
+
+/*
+ * Customr form for add news items to school and hotels
+ * Collect Title, Body and push notifcation values
+ */
+function news_add_form(&$form_state) {
+  $dea_typr_node_id = news_get_main_catrgoty_id();
+  $user_role_id = news_get_user_role_id();
+ $user_role_name = news_get_user_role_name();
+
+  
+  $form['news_title'] = array(
+    '#type' => 'textfield',
+    '#title' => t("News title"),
+	'#maxlength' => 35,
+    '#required' => TRUE,
+  );
+   
+  $form['news_dea_type'] = array(
+    '#type' => 'hidden',
+    '#value' => $user_role_id,
+  );
+  
+  $form['news_sh_type'] = array(
+    '#type' => 'hidden',
+    '#value' => $dea_typr_node_id,
+  );
+  
+  $form['news_sh_name'] = array(
+    '#type' => 'hidden',
+    '#value' => $user_role_name,
+  );
+   
+  $options = array(
+    'Enable' => t('Enable'),
+    'Disable' => t('Disable'), 
+  );
+
+  $form['push_notify'] = array(
+    '#type' => 'radios',
+    '#title' => t('Press for creating a push notification'),
+    '#default_value' => $options['Disable'],
+    '#options' => $options,
+    '#theme' => 'my_radios', 
+  );
+  
+  $form['news_body'] = array(
+    '#type' => 'textarea',
+    '#title' => t("News Text"),
+  );
+   
+			
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+  );
+
+  $form['cancel'] = array(
+    '#type' => 'markup',
+    '#prefix' => "<a class='dea-cancel' title='Cancel' href=''>",
+    '#suffix' => '</a>',
+    '#value' => t("Cancel"),
+  );
+
+  return $form;
+}
+
+
+function news_add_form_validate($form, &$form_state) {
+  $title = $form_state['values']['news_title'];
+  
+  if (empty($title)) {
+    form_set_error('news_title', t('Title is required.'));
+  }
+}
+
+function news_add_form_submit($form, &$form_state) {
+  if (!empty($form_state['values']['news_title'])) {
+    global $user;
+    $node = new stdClass();
+    $node->created = time();
+    $node->status = 1; // Published ? 1 : 0
+    $node->format = 2;  // 1:Filtered HTML, 2: Full HTML
+ 
+    //Main Node Fields
+    //$node->name = $form_state['values']['title'];
+    $node->title = $form_state['values']['news_title'];
+    $node->body = $form_state['values']['news_body'];
+
+    //$node->tnid = $form_values['tnid'];
+    $node->uid = $user->uid;
+    $node->changed = $node->created;
+    $node->type = 'category_fields'; //This can be any node type
+    $node->language = $user->language;
+			
+    $node->field_cat_dea_type = array(
+      0 => array(
+        'nid' => $form_state['values']['news_dea_type']
+        ),
+      );
+
+    $node->field_category_type = array(
+      0 => array(
+        'nid' => 354,
+        ),
+    );
+
+   $sh_type_name = "field_".$form_state['values']['news_sh_name'];
+   $node->$sh_type_name = array ( 
+     "value" => $form_state['values']['news_sh_type'],
+   );
+   
+    $node->field_important = array(
+      0 => array(
+        'value' => $form_state['values']['push_notify'],
+       ),
+    );
+			
+    $node->field_use_pin_code = array(
+      0 => array(
+        'value' => "No",
+      ),
+    );
+
+    $node->field_pin_code_type = array(
+      0 => array(
+        'value' => "Public Pin Code",
+        ),
+      );
+		$temp_user = $user;
+		if (isset($_SESSION['current_chain_user'])) {
+			$temp_user = user_load(array('uid' => $_SESSION['current_chain_user']));
+		}
+		//if($temp_user->profile_user_type=="SCA" || $temp_user->profile_user_type=="MSA")
+		if(isset($_SESSION['current_chain_nid']))
+		{
+			$main_id = $_SESSION['current_chain_nid'];
+		}
+		else
+		{
+				$main_id = dea_get_current_user_dea_type_nid2();
+		}
+
+		$node->field_main_id = array(
+      0 => array(
+        'value' => $main_id,
+        ),
+      );	
+
+
+    //$node->field_cat_dea_type[0]['nid'] = 432;
+    if ($node = node_submit($node)) {
+      node_save($node);
+    }
+  }
+}
+
+function dea_news_theme($existing, $type, $theme, $path) {
+  return array(
+    // Theme for radio group.
+    'my_radios' => array(
+      'arguments' => array('element' => NULL),
+    ),
+    // Theme for single radio.
+    'my_radio' => array(
+      'arguments' => array('element' => NULL),
+    ),
+  );
+}
+
+
+function theme_my_radios($element) {
+  $keys = array_keys($element['#options']);
+  $type = $element[$keys[0]]['#type'];
+ 
+  // Start wrapper div for the group.
+  $output .= '<div class="my-radios">';
+ 
+  foreach ($keys as $key) {
+    // Each radios is theme by calling our custom 'my_radio' theme function.
+    $output .= theme('my_radio', $element[$key]);
+  }
+ 
+  $output .= '</div>';
+  return $output;
+}
+
+function theme_my_radio($element) {
+  _form_set_class($element, array('form-radio'));
+  $output = '<input type="radio" ';
+  $output .= 'id="' . $element['#id'] . '" ';
+  $output .= 'name="' . $element['#name'] . '" ';
+  $output .= 'value="' . $element['#return_value'] . '" '; 
+  $output .= 'title="' . "Press for creating a push notification". '" ';
+  $output .= (check_plain($element['#value']) == $element['#return_value']) ? ' checked="checked" ' : ' ';
+  $output .= drupal_attributes($element['#attributes']) . ' />';
+  
+  if (!is_null($element['#title'])) {
+    $output = '<label class="option" for="' . $element['#id'] . '">' . $output . ' ' . $element['#title'] . '</label>';
+  }
+ 
+  unset($element['#title']);
+  // Default 'form_element' theme is uncommented below, which create a DIV wrapper for each item.
+  //return theme('form_element', $element, $output);
+  return $output;
+}

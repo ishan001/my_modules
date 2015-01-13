@@ -1,0 +1,4 @@
+name = "DEA NEWS"
+description = "DEA NEWS add form"
+package = "DEA"
+core = 6.x

@@ -1,0 +1,5 @@
+name = "DEA Service"
+description = "Exposes DEA data to apps."
+package = "DEA"
+core = 6.x
+dependencies[] = nin_service

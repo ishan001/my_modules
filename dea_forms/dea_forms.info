@@ -1,0 +1,4 @@
+name = "DEA Forms"
+description = "DEA forms specific functionality."
+package = "DEA"
+core = 6.x

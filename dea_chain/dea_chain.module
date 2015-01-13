@@ -1,0 +1,926 @@
+<?php
+
+function die_r() {
+  die('<pre>' . print_r(func_get_args(), TRUE) . '</pre>');
+}
+
+function dea_chain_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  global $user;
+
+  if ($op == 'presave' && $node->type == 'main_category') {
+
+  }
+  
+  // Node has just been saved.
+  // @TODO: Be more structural. add a switch checking node->type.
+	if ($op == "insert" && $node->type == "main_category") {
+
+    // Save into chain_users
+    // And saving profile_language
+    $sca_nid = db_fetch_object(db_query("select nid from {node} where `type`='%s'  and `uid` = %d and  language ='%s' ", 'main_category', $user->uid,$user->language));
+    
+    // Ensuring that records are inserted only once in {chain_users}
+    // Does that node-language match the store chain admin language?
+    // We store this as a default node in the {chain_users}
+    // Use @translation_node_get_translations to load multiple nodes of 
+    // different languages later.
+    if ($node->language == $user->language) {
+      // Save into dea_admin
+			$check = db_fetch_object(db_query('select * from {dea_admin} where uid = %d', $node->uid));
+			if (!$check->uid) {
+				
+				// get the current user nid to the dea_admin (this is for old data)
+				$ca_nid = db_result(db_query("select ca_nid from {chain_users} where `ca_uid`= %d ",   $node->uid));
+				
+				// The new store to add in dea_admin.
+				if(isset($ca_nid))
+					$dea_admin_nid = array($ca_nid,$node->nid);
+				else
+					$dea_admin_nid = array($node->nid);
+					
+				$dea_record = array(
+					'uid' => $node->uid,
+					'data' => serialize($dea_admin_nid),
+				);
+				//$record_save_data = drupal_write_record('dea_admin', $dea_record);
+				$result =  db_query("INSERT INTO {dea_admin} (uid,data) VALUES
+		    (%d,'%s')",  $node->uid,serialize($dea_admin_nid));
+				watchdog('dea_chain_nodeapi__dea_save_data', '<pre>' . print_r($record_save_data, TRUE) . '</pre>');
+			}
+			else
+			{
+			 	if(is_array(unserialize($check->data)))
+				{
+					$stores = unserialize($check->data);
+				}
+				else
+				{
+					$stores = unserialize(unserialize($check->data));
+				}
+				// Save the new store into this data
+				$stores[] = $node->nid;
+				$update = serialize($stores);
+				$dea_update_record = array(
+					'id' => $check->id,
+					'uid' => $check->uid,
+					'data' => $update,
+				);
+				// Update the row in the table with new information in 'data'
+				$record_save_data = drupal_write_record('dea_admin', $dea_update_record, 'id');	
+				watchdog('dea_chain_nodeapi__dea_save_data', '<pre>' . print_r($record_save_data, TRUE) . '</pre>');			
+			}
+      
+			
+			
+			
+
+      
+			//echo $sca_nid->nid." ".$user->uid." ".$node->nid." ".$node->uid; die();
+			
+			if($user->profile_user_type =='SCA')
+			{
+				//this is update the exisitng record as well, 
+				$result =  db_query("INSERT INTO {chain_users} (sca_nid,sca_uid,ca_nid,ca_uid) VALUES  (%d,%d,%d,%d)", $sca_nid->nid, $user->uid, $node->nid, $node->uid);
+				if (!$result)
+					watchdog('insert chain user table ', 'cant insert the chain user table ', array('!sca_nid' => $sca_nid->nid, '!sca_uid' => $user->uid,'!ca_nid' => $node->nid, '!ca_uid' => $node->uid));
+					
+				$record = array(
+        'sca_nid' => $sca_nid->nid,
+        'sca_uid' => $user->uid,
+        'ca_nid' => $node->nid,
+        'ca_uid' => $node->uid,
+      	);	
+      	//drupal_write_record('chain_users', $record);
+			}
+    }
+		
+		
+    $profile_lang = db_result(db_query("select nid from {node} where `type`='%s'  and `uid` = %d ", 'profile_lang', $user->uid));
+    $profile_lang_node = node_load($profile_lang);
+
+    $branch_pro_nid = db_result(db_query("select nid from {node} where `type`='%s'  and `uid` = %d ", 'profile_lang', $store_user->uid));
+    
+    $profile_node = $branch_pro_nid > 0 ? node_load($branch_pro_nid) : dea_chain_node_skeleton();
+    $profile_node->format = 2;
+    $profile_node->title = 'app languages';
+    // $profile_node->body = '';
+    $profile_node->uid = $node->uid;
+    $profile_node->changed = time();
+    $profile_node->type = 'profile_lang'; //This can be any node type
+    $profile_node->language = $user->language;
+    // Typo: correct typo.
+    $profile_node->field_site_langugae = $profile_lang_node->field_site_langugae;
+    node_save($profile_node);
+
+    // Saving main_category into another language
+		if($user->profile_user_type=="SCA" && ( ($node->tnid==0)  || ($node->tnid == $node->nid) ) ) {
+/*			$ca_uid = db_result(db_query("select uid from {node} where `nid`= %d ", $node->nid));
+			$query = "UPDATE   {chain_users} SET  	ca_nid  = '%d'  WHERE 	ca_uid = %d  ";
+			$result = db_query($query, $node->nid, $ca_uid) ;
+			if (!$result)
+				watchdog('update chain user table ', 'cant update the chain user table ', array('!ca_nid' => $node->nid, '!ca_uid' => $ca_uid));*/
+			
+			$source_nid = $node->nid;
+			$source_node = node_load($source_nid);
+			$source_node->tnid = $source_nid;
+			node_save($source_node);
+			
+			$new_node_in_a_other_language = $source_node;
+			$main_title = $source_node->title;
+			$new_node_in_a_other_language->type = 'main_category';
+			node_object_prepare($new_node_in_a_other_language);
+			
+			$langs = dea_get_user_all_languages($user->uid);
+			
+
+			for($i=0;$i<count($langs);$i++) {
+				if($langs[$i]!=$user->language)
+				{
+					
+					$new_node_in_a_other_language->nid = "";
+					$new_node_in_a_other_language->title  = $main_title." ".$langs[$i];
+					$new_node_in_a_other_language->language = $langs[$i];
+					// define source tnid   
+					$new_node_in_a_other_language->tnid = $source_nid;
+					node_save($new_node_in_a_other_language);
+				}
+			}
+			
+		}
+			
+	}
+
+	 if ($op == 'delete' && $node->type == "main_category") {
+		 
+		 $query = "DELETE  FROM {chain_users} WHERE  	ca_nid  = '%d'   ";
+		 $result = db_query($query, $node->nid);
+		 if (!$result)
+				watchdog('delete chain user ', 'cant delete the chain user', array('!ca_nid' => $node->nid));
+
+ 
+		 $query = "DELETE  FROM {chain_access_config} WHERE  	ca_nid  = '%d'   ";
+		 $result = db_query($query, $node->nid);	
+		 if (!$result)
+				watchdog('delete chain access values ', 'cant delete the chain access values', array('!ca_nid' => $node->nid));
+		 
+		 
+		//update the dea_admin table
+		$result = db_fetch_object(db_query('select * from {dea_admin} where uid = %d', $node->uid));
+		$new_store = array();
+		if(is_array(unserialize($result->data)))
+		{
+			$stores = unserialize($result->data);
+		}
+		else
+		{
+			$stores = unserialize(unserialize($result->data));
+		}
+			
+		if(is_array($stores))
+		{
+			foreach ($stores  as  $record) {
+				if(arg(1)!=$record && $record!="")
+				{
+					$new_store[] = $record;
+				}
+				
+			}
+
+			$update = serialize($new_store);
+			$dea_update_record = array(
+					'id' => $result->id,
+					'uid' => $result->uid,
+					'data' => $update,
+			);
+			// Update the row in the table with new information in 'data'
+			$record_save_data = drupal_write_record('dea_admin', $dea_update_record, 'id');	
+			watchdog('dea_chain_nodeapi__dea_save_data', '<pre>' . print_r($record_save_data, TRUE) . '</pre>');	
+		}
+		
+		 
+		 //checking multiple user available before delete user 
+		 $check = db_fetch_object(db_query('select * from {dea_admin} where uid = %d', $node->uid));	
+		
+		
+		if ($check->uid) {
+			if(is_array(unserialize($check->data)))
+			{
+				$stores = unserialize($check->data);
+			}
+			else
+			{
+				$stores = unserialize(unserialize($check->data));
+			}
+		}
+
+		if (is_array($stores) && (in_array("", $stores) && count($stores)==1 ) ||  count($stores)==0) {
+     user_delete(array(), $node->uid);
+		}
+
+     $userCnt = db_result(db_query("select count(*) from {chain_users} where   `ca_uid` = %d ", $node->uid));
+		 if($userCnt==1)
+		 {
+				$account = user_load($node->uid);
+				$user_data =array( 
+					'profile_user_type' => 'SA',
+				);
+				user_save($account, $user_data);
+		 }
+		 if($_SESSION['current_chain_user']=$node->uid)
+		 {
+				 $_SESSION['current_chain_user'] = $user->uid;
+		 }
+		 
+		 
+		 
+	 }
+	 
+	 if ($op == 'delete' && $node->type == "category_fields") {
+		 		 		 
+		 if($node->field_category_type[0]['nid']==3)
+		 {
+			$_REQUEST['destination'] = "node/3/edit/Welcome";
+		 }
+		 
+	 }
+	 if ($op == "insert" && $node->type == "main_category" && arg(2)=="mainType") {
+  		//drupal_goto('chain/access/config', array('branch' => $node->nid));
+	 		//$_REQUEST['destination'] = "chain/access/config/?branch=".$node->nid;
+	 }
+
+}
+
+/**
+ * Implement hook_form_alter().
+ */
+function dea_chain_form_alter(&$form, $form_state, $form_id) {
+  global $user;
+	//Get user role
+	$roles_user = array();
+	foreach ($user->roles as $userroles) {
+			$roles_user[] = $userroles;
+	}
+  if ($form_id == "main_category_node_form" && $user->profile_user_type=="SCA" && arg(0)=="chain") {
+    $user_name ="";	
+		$user_email = "";
+    if($form['nid']['#value']!="") {
+      $user_from = user_load($form['uid']['#value']);
+      $user_name =  $user_from->name;
+      $user_email = $user_from->mail;
+		}
+	
+    $form['main_category_node_form']['text'] = array(
+      '#prefix' => '<p id="dea-chain-create-store-text">',
+      '#suffix' => '</p>',
+      '#value' => t($roles_user[1]." Admin Account Information"), // changed   
+    );  
+			
+		$form['field_user_email'] = array(
+      '#type' => 'textfield',
+      '#title' => t('E-mail'),
+      '#description' => t("Please enter E-mail."),
+      '#size' => 60,
+      '#weight' =>101,
+      '#required' => TRUE,
+      '#default_value' => $user_email,
+  	);
+
+		$query = db_query("select mail, uid, name from {users} where mail='%s'", $form_state['values']['field_user_email']);
+  	$user_check = db_fetch_object($query);
+		if($form['nid']['#value']=="" || ( !$user_check->uid && !empty($form_state['values']))) { 
+			
+			if(empty($form_state['storage']['user_exists']))
+			{
+				$form['field_user_password'] = array(
+					'#type' => 'password_confirm',
+					'#description' => t("Please enter password."),
+					'#size' => 60,
+					'#weight' =>102,
+					'#required' => TRUE,
+				);
+			}
+		  $form['field_user_send_mail'] = array(
+			  '#type' => 'checkbox',
+			  '#title' => t('Account Information will be sent to the responsible persons.'), 
+			  '#default_value' => 1,
+			  '#weight' =>103,
+		  );
+		}
+
+    $form['clear'] = array(
+  	  '#name' => 'clear',
+  		'#type' => 'button',
+  		'#value' => t('Cancel'),
+    );
+
+    // Check is user exists.
+    if (!empty($form_state['storage']['user_exists'])) {
+      $form['user_exists'] = array(
+      '#type' => 'value',
+      '#value' => $form_state['storage']['user_exists']->uid,
+      );
+    }
+    // Add custom validation and submit handlers.
+    $form['#validate'][] = 'dea_chain_main_category_form_validate';
+    $form['buttons']['submit']['#submit'][] = 'dea_chain_main_category_form_submit';
+    // Removing node_form_submit from the parameter.
+    // Changing order.
+    // @see node_form_submit_build_node().
+    unset($form['buttons']['submit']['#submit'][0]);
+    $form['buttons']['submit']['#submit'][] = 'node_form_submit';
+  }	
+	else if ($form_id == "chain_welcome_node_form") {
+    $form['field_not_all_stores']['#prefix'] = '<div style="display:none;">';
+    $form['field_not_all_stores']['#suffix'] = '</div>';
+    $form['field_not_all_stores_text']['#prefix'] = '<div style="display:none;">';
+    $form['field_not_all_stores_text']['#suffix'] = '</div>';
+		$form['field_cant_find_store_text'][0]['#title'] = t("I can't find my ".$roles_user[1]." text");
+		
+  }
+	else if($form_id == "user_profile_form")
+	{
+		 $form['#validate'][] = 'user_profile_form_validate_func';
+	}
+	
+}
+
+/**
+ * Validation handler for main_category_form
+ */
+function dea_chain_main_category_form_validate($form, &$form_state) {
+	
+	global $user;
+  $postal = $form_state['values']['field_location'][0]['postal_code'];
+  $latitude = $form_state['values']['field_location'][0]['locpick']['user_latitude'];
+  $longitude = $form_state['values']['field_location'][0]['locpick']['user_longitude'];
+  $contact_phone = $form_state['values']['field_contact_phone'][0]['value'];
+  $city = $form_state['values']['field_location'][0]['city'];
+	
+
+	if(empty($city)) {
+		form_set_error("field_location][0][city", t('City is Required !'));
+  }
+
+  if ( !preg_match ('/^[0-9 ]{1,15}$/', $postal)  && $postal != "") {
+    form_set_error("field_location][0][postal_code", t('Invalid Postal Code!'));
+  }
+  
+  if (!is_numeric($latitude) && $latitude != "") {
+    form_set_error("field_location][0][locpick][user_latitude", t('Invalid Latitude!'));
+  }
+  
+  if (!is_numeric($longitude) && $longitude != "") {
+    form_set_error("field_location][0][locpick][user_longitude", t('Invalid Longitude!'));
+  }
+
+	if(!empty($contact_phone)) {
+	  if (!eregi("^[-0-9)( +.]{10,18}$", $contact_phone)) {
+		 //form_set_error('field_contact_phone',t('Please add a numaric value to Phone field'));
+	  } 
+  }
+
+
+	$username = $form_state['values']['field_user_email'];
+	$email = $form_state['values']['field_user_email'];
+	$password = $form_state['values']['field_user_password'];
+
+
+
+	
+  
+  // Add a user check.
+  $query = db_query("select mail, uid, name from {users} where mail='%s'", $email);
+  $user_check = db_fetch_object($query);
+	
+
+	
+	
+  
+  if (!valid_email_address($email)) {
+    form_set_error('field_user_email', t('Invalid Email address. '));
+  }
+
+  if(empty($email)) {
+    form_set_error('field_user_email', t('Email field is required. '));
+  }
+
+
+  if($user_check->uid) {
+		
+		// checking current uid is exisitng in 
+		$cur_uid = $user_check->uid;
+		$userCnt = db_result(db_query("select count(*) from {chain_users} where `sca_uid`=%d  and `ca_uid` = %d ", $user->uid, $cur_uid));
+		if($userCnt>=1)
+		{		
+			$description = t('@mail already exists. Click save again if you want to use '.
+				'@mail as you store administrator, a new password won\'t be sent to @mail. '.
+				'If you type a new e-mail, type the password once again.', array('@mail' => $email));
+			// If user exists in a new store to be saved.
+			// Is there an existing user?
+			// Return an error with the message encouraging user to save once again.
+
+
+			//if (empty($form_state['storage']['user_exists']) && !$form_state['values']['nid']) {
+				if (empty($form_state['storage']['user_exists']) ) {
+				// @TODO: Add a more descriptive text.
+					$form_state['storage']['user_exists'] = $user_check;
+					if ($form_state['values']['uid'] != $user_check->uid) {
+        		form_set_error('field_user_email', $description);
+      		}
+					else if(!$form_state['values']['nid'])
+						form_set_error('field_user_email', $description);
+				
+				}
+		}
+		else
+		{
+			form_set_error('field_user_email', 'Email Already Exists');
+		}
+		
+
+    // Is there an existing store?
+    // Is there an existing user?
+    // Return an error with the message encouraging user to save once again.
+   /* if (!empty($form_state['values']['nid'])) {
+
+      // Has the  user_exists been added into the form_state?
+      // If no, return an error.
+      if ($form_state['values']['uid'] != $user_check->uid && empty($form_state['storage']['user_exists'])) {
+        form_set_error('field_user_email', $description);
+      }
+    }*/
+  }
+	else
+	{
+		
+		$form_state['storage']['user_exists']="";
+	}
+	
+	//check password charactores
+	//if(strlen($password)<6 && empty($form_state['storage']['user_exists']) && empty($form_state['values']['nid']))
+	if(strlen($password)<6 && !$user_check->uid )
+	{
+		form_set_error('field_user_password', t('password must be at least 6 characters'));
+	}
+	//;
+	
+}
+
+/**
+ * Submit handler for main_category_form
+ */
+function dea_chain_main_category_form_submit($form, &$form_state) {
+	global $user;
+  // Adding a reference,
+  // and manipulate values before we move on to save.
+  // @see node_form_submit_build_node().
+	
+  $values =& $form_state['values'];
+  $user_exists = $form_state['storage']['user_exists'];
+	$pre_user = user_load($values['uid']);
+
+  if (!empty($user_exists) || !empty($values['nid'])) {
+		if(!empty($user_exists->uid))
+		{
+	    $store_user = user_load($user_exists->uid);
+			
+			//update user type to MSA
+			$account = user_load($user_exists->uid);
+			$user_data =array( 
+				'profile_user_type' => 'MSA',
+			);
+			user_save($account, $user_data);
+		}
+		else if(!empty($values['nid']))
+		{
+			// creat a new user when type new password in edit store
+			$pre_user = user_load($values['uid']);
+			if($pre_user->mail!=$values['field_user_email'])
+			{			
+				$new_user = array(
+				'name' => $values['field_user_email'],
+				'mail' => $values['field_user_email'],
+				'pass' => $values['field_user_password'],
+				'profile_user_type' => 'SA',
+				);
+				$new_user = dea_chain_new_user($new_user); // Saves a new store user.
+				$saved = user_save(NULL, $new_user);
+				// Did the user successfully saved?
+				if ($saved->uid) {
+					watchdog('dea_chain_main_category__save', '<pre>' . print_r($saved, TRUE) . '</pre>');
+					drupal_set_message('@mail is saved', array('@mail' => $saved->mail));
+					
+					// Check if we should send mail.
+					if ($values['field_user_send_mail']) {
+						$saved->password = $values['field_user_password'];
+						$send = _user_mail_notify('register_admin_created', $saved, $user->language);
+						if ($send) {
+							watchdog('dea_chain_main_category__mail_sent', '<pre>' . print_r($send, TRUE) . '</pre>');
+							drupal_set_message('Mail sent to @mail', array('@mail' => $saved->mail));
+						}
+						else {
+							drupal_set_message('Mail did not send');
+							watchdog('dea_chain_main_category__mail_sent_failed', '<pre>' . print_r($send, TRUE) . '</pre>');
+						}
+					}
+					// Use the saved user as $store_user.
+					$store_user = $saved;
+				}
+				else {
+					// Return a failed message.
+					drupal_set_message('@mail could not be saved', array('@mail' => $values['field_user_email']));
+					// Log this.
+					watchdog('dea_chain_main_category__save_failed', '<pre>' . print_r($saved, TRUE) . '</pre>');
+				}
+			}		
+		}
+		else
+		{
+			$store_user = user_load($values['uid']);
+		}
+  }
+  else {
+    $new_user = array(
+      'name' => $values['field_user_email'],
+      'mail' => $values['field_user_email'],
+      'pass' => $values['field_user_password'],
+      'profile_user_type' => 'SA',
+    );
+    $new_user = dea_chain_new_user($new_user); // Saves a new store user.
+    $saved = user_save(NULL, $new_user);
+    // Did the user successfully saved?
+    if ($saved->uid) {
+      watchdog('dea_chain_main_category__save', '<pre>' . print_r($saved, TRUE) . '</pre>');
+      drupal_set_message('@mail is saved', array('@mail' => $saved->mail));
+      
+      // Check if we should send mail.
+      if ($values['field_user_send_mail']) {
+        $saved->password = $values['field_user_password'];
+        $send = _user_mail_notify('register_admin_created', $saved, $user->language);
+        if ($send) {
+          watchdog('dea_chain_main_category__mail_sent', '<pre>' . print_r($send, TRUE) . '</pre>');
+          drupal_set_message('Mail sent to @mail', array('@mail' => $saved->mail));
+        }
+        else {
+          drupal_set_message('Mail did not send');
+          watchdog('dea_chain_main_category__mail_sent_failed', '<pre>' . print_r($send, TRUE) . '</pre>');
+        }
+      }
+      // Use the saved user as $store_user.
+      $store_user = $saved;
+			
+		
+    }
+    else {
+      // Return a failed message.
+      drupal_set_message('@mail could not be saved', array('@mail' => $values['field_user_email']));
+      // Log this.
+      watchdog('dea_chain_main_category__save_failed', '<pre>' . print_r($saved, TRUE) . '</pre>');
+    }
+  }
+	
+	//update dea admin table and chain user when email address changed
+	
+	if($values['uid']!= $store_user->uid && $values['uid']!=$user->uid)
+	{
+		$query = "UPDATE   {chain_users} SET  	ca_uid  = '%d'  WHERE 	ca_nid = %d  ";
+		$result = db_query($query, $store_user->uid, $values['nid']) ;
+		if (!$result)
+			watchdog('update chain user table ', 'cant update the chain user table ', array('!ca_nid' => $node->nid, '!ca_uid' => $ca_uid));
+		
+		
+			
+		// remove nid from previous uid
+		$check = db_fetch_object(db_query('select * from {dea_admin} where uid = %d', $values['uid']));	
+		
+		
+		if ($check->uid) {
+		if(is_array(unserialize($check->data)))
+		{
+			$stores = unserialize($check->data);
+		}
+		else
+		{
+			$stores = unserialize(unserialize($check->data));
+		}
+		$stores_new;
+		if(is_array($stores))
+		{
+			foreach ($stores  as  $record) {
+				if($values['nid']!=$record)
+					$stores_new[] = $record;
+			}
+			$update = serialize($stores_new);
+			$dea_update_record = array(
+					'id' => $check->id,
+					'uid' => $check->uid,
+					'data' => $update,
+			);
+			// Update the row in the table with new information in 'data'
+			$record_save_data = drupal_write_record('dea_admin', $dea_update_record, 'id');	
+			watchdog('dea_chain_nodeapi__dea_save_data', '<pre>' . print_r($record_save_data, TRUE) . '</pre>');	
+		}
+	}
+		
+		// update nid with new uid
+		$check = db_fetch_object(db_query('select * from {dea_admin} where uid = %d', $store_user->uid));
+		
+		if (!$check->uid) {
+			
+			// get the current user nid to the dea_admin (this is for old data)
+			$ca_nid = db_result(db_query("select ca_nid from {chain_users} where `ca_uid`= %d ",   $store_user->uid));
+			
+			// The new store to add in dea_admin.
+			if(isset($ca_nid) && $ca_nid !=$values['nid'])
+			{
+				$dea_admin_nid = array($ca_nid,$values['nid']);
+			}
+			else {
+				$dea_admin_nid = array($values['nid']);
+			}
+				
+			$dea_record = array(
+				'uid' => $store_user->uid,
+				'data' => serialize($dea_admin_nid),
+			);
+			$record_save_data = drupal_write_record('dea_admin', $dea_record);
+			watchdog('dea_chain_nodeapi__dea_save_data', '<pre>' . print_r($record_save_data, TRUE) . '</pre>');
+		}
+		else
+		{
+			
+			if(is_array(unserialize($check->data)))
+			{
+				$stores = unserialize($check->data);
+			}
+			else
+			{
+				$stores = unserialize(unserialize($check->data));
+			}
+			//$stores = unserialize($check->data);
+
+			// Save the new store into this data
+			$stores[] = $values['nid'];
+			$update = serialize($stores);
+			$dea_update_record = array(
+				'id' => $check->id,
+				'uid' => $check->uid,
+				'data' => $update,
+			);
+			// Update the row in the table with new information in 'data'
+			$record_save_data = drupal_write_record('dea_admin', $dea_update_record, 'id');	
+			watchdog('dea_chain_nodeapi__dea_save_data', '<pre>' . print_r($record_save_data, TRUE) . '</pre>');			
+		}
+			
+	}
+	
+
+		
+  
+  // Make sure that node owner is the store user.
+  // @see node_form_submit_build_node().
+  $values['uid'] = $store_user->uid;
+  $values['name'] = $store_user->name;
+  $values['status'] = 1;
+  
+	
+  // Is this an edit mode?
+  if ($values['nid']) {
+		
+		// delete previous user if there have no any stores assign to him
+		$userCnt = db_result(db_query("select count(*) from {chain_users} where   `ca_uid` = %d ", $pre_user->uid));
+		if($userCnt==0)
+		{
+			$query = "UPDATE   {node} SET  	uid  = '%d'   WHERE 	uid = %d   ";
+			$result = db_query($query, $store_user->uid, $pre_user->uid) ;
+			
+			user_delete(array(), $pre_user->uid);						
+			//echo $pre_user->uid." s ". $store_user->uid."a";die();
+			
+		}
+		
+		// update other nodes user id and store id
+		if($pre_user->mail!=$values['field_user_email'])
+		{
+			/*$query = 'select * from {node} as n left join {content_type_category_fields} as cf ON n.nid =  cf.nid where `uid` = %d and type = "%s" and field_main_id_value = %d  ';
+      $result = db_query($query, $pre_user->uid,'category_fields',$values['nid']);
+			while ($res = db_fetch_object($result)) {
+            $tmp_node = node_load($res->nid);
+						$tmp_node->uid = $store_user->uid;
+						node_save($tmp_node);
+      }*/
+			
+			//update the current user id if current user change
+			if($_SESSION['current_chain_user']==$pre_user->uid)
+			{
+				$_SESSION['current_chain_user']= $store_user->uid;
+			}
+			
+			//update the user MSA to SA
+			if($userCnt==1)
+			{
+				$account = user_load($pre_user->uid);
+				$user_data =array( 
+					'profile_user_type' => 'SA',
+				);
+				user_save($account, $user_data);
+			}
+			//delete users  app languges 
+			if($userCnt==0)
+			{
+				$query = 'DELETE FROM {node}  where `uid` = %d and type = "%s"   ';
+				$result = db_query($query, $pre_user->uid,'profile_lang');
+			}
+				
+			// update users nodes with new user id	
+			$query = 'UPDATE {node} as n left join {content_type_category_fields} as cf ON n.nid =  cf.nid SET uid = %d  where `uid` = %d and type = "%s" and field_main_id_value = %d  ';
+      $result = db_query($query,$store_user->uid, $pre_user->uid,'category_fields',$values['nid']);
+			
+			// update users main translation nodes with new user id	
+			$query = 'UPDATE {node}  SET uid = %d  where `uid` = %d and type = "%s" and tnid = %d ';
+      $result = db_query($query,$store_user->uid, $pre_user->uid,'main_category',$values['nid']);
+			
+			// adding proffile lanaguage for the new user
+			if (empty($user_exists))
+			{
+				$profile_lang = db_result(db_query("select nid from {node} where `type`='%s'  and `uid` = %d ", 'profile_lang', $user->uid));
+				$profile_lang_node = node_load($profile_lang);
+
+				
+				$profile_node = new stdClass();
+
+				$profile_node->format = 2;
+				$profile_node->title = 'app languages';
+				// $profile_node->body = '';
+				$profile_node->uid = $store_user->uid;
+				$profile_node->changed = time();
+				$profile_node->type = 'profile_lang'; //This can be any node type
+				$profile_node->language = $store_user->language;
+				// Typo: correct typo.
+				$profile_node->field_site_langugae = $profile_lang_node->field_site_langugae;
+				node_save($profile_node);
+			}
+			
+		}
+
+		
+    // Get the current store to save.
+    $saved_store = node_load($values['nid']);
+
+	  // Request from {dea_admin} and update.
+		// im not sure we need this part -ishan
+		$result = db_fetch_object(db_query('select * from {dea_admin} where uid = %d', $store_user->uid));
+			if(is_array(unserialize($result->data)))
+			{
+				$stores = unserialize($result->data);
+			}
+			else
+			{
+				$stores = unserialize(unserialize($result->data));
+			}
+	
+    watchdog('dea_chain_nodeapi__dea_update_data', '<pre>' . print_r(array($queue, $store_updated), TRUE) . '</pre>');
+  }
+  else {
+    // Do nothing, proceed to _nodeapi().
+    // with $op = 'insert'.
+  }
+	//$form_state['redirect'] = array('chain/access/config', array('branch' => $values['nid']));
+	//drupal_goto('chain/access/config/', array('branch' => $values['nid']));
+	unset($form_state['storage']); 
+}
+
+
+function user_profile_form_validate_func($form, &$form_state) 
+{
+		$password = $form_state['values']['pass'];
+	//check password charactores
+	if(strlen($password)<6)
+		form_set_error('pass', t('password must be at least 6 characters'));
+}
+function dea_chain_new_user($fields) {
+  global $user;
+  $fields += array(
+    'status' => 1,
+    'language' => $user->language,
+    'roles' => $user->roles,
+  );
+
+  return $fields;
+}
+
+function dea_chain_node_skeleton() {
+  $node = new stdClass();
+  $node->status = 1;
+  $node->created = time();
+  return $node;
+}
+
+function dea_chain_block($op='list', $delta=0) {
+  // listing of blocks, such as on the admin/block page
+	if ($op == "list") {
+	 
+	$block[0]["info"] = t('Custom Block');
+	return $block;
+	}
+	else if($op == 'view')
+	{
+		global $user;
+		if($user->profile_user_type=="SCA")
+		{		  
+			$block_content='';
+			$block_content.='<select name="chains" id="chains" >';
+			
+			//$query = 'select * from {chain_users} as cu LEFT JOIN {node} as n ON n.nid = cu.ca_nid   where `sca_uid` = %d   ';
+			$result = db_query('SELECT * FROM {node} LEFT JOIN {chain_users} ON nid = ca_nid WHERE sca_uid = %d order by title asc',$user->uid);
+			//$result = db_query($query,  $user->uid) or die(mysql_error());
+		
+			while ($res = db_fetch_object($result)) {
+				
+				$block_content.='<option value="'.$res->uid.'-'.$res->nid.'" ';
+				if($_SESSION['current_chain_user']==$res->uid && $_SESSION['current_chain_nid']==$res->nid)
+					$block_content.=' selected ' ;
+				$block_content.='>'.$res->title.'</option>' ;
+			}
+			$node_id = dea_get_current_user_dea_type_nid2();
+			$deanode = node_load($node_id);
+			$block_content.='<option value="'.$deanode->uid.'-'.$deanode->nid.'" ';
+			if($_SESSION['current_chain_user']==$deanode->uid || !isset($_SESSION['current_chain_user']))
+				$block_content.=' selected ' ;
+			$block_content.='>Chain</option>' ;
+			$block_content.='</select>';
+  
+
+			$block['content'] = $block_content;
+			return $block;
+	  	}
+  	}
+}
+function dea_chain_menu() {
+
+   $items['ajaxLoad/setCurrntChainUser'] = array(
+    'title' => 'user groups',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+    'page callback' => 'dea_chain_set_user_callback',
+  );
+	
+
+	 return $items;
+}
+
+function dea_chain_set_user_callback() {
+	global $base_url;
+	$chain_arg = $_REQUEST['chain_user'];
+	$chain_array = explode("-", $chain_arg);
+	$chain_uid = $chain_array[0];
+	$chain_nid = $chain_array[1];
+	$_SESSION['current_chain_user'] = $chain_uid;
+	$_SESSION['current_chain_nid'] = $chain_nid;
+	$tmp_user = user_load($chain_uid);
+
+  $nidWel = db_result(db_query('SELECT n.nid from {node} AS n LEFT JOIN  content_type_category_fields AS cf ON cf.nid =  n.nid 
+       where uid = %d and field_category_type_nid = 3 and type="category_fields" and language = "%s" and field_main_id_value = %d  ', $_SESSION['current_chain_user'],$tmp_user->language,$chain_nid ));
+  
+  //replace - form space
+  $page_link_title = str_replace(" ", "-", $res->title);
+  if (empty($end_url)) {
+    if (!empty($nidWel)) {
+      $link_path = $base_url."/node/".$nidWel."/edit/Welcome";
+    }
+    else {
+      $link_path = $base_url."/node/3/edit/Welcome";
+    }
+  }
+	echo $link_path;
+}
+
+/* ------------------------------ *
+ * _chain_user_load()
+ * ------------------------------ */
+function dea_chain_chain_user_load() {
+
+}
+
+function dea_chain_chain_user_load_multiple() {
+
+}
+
+function dea_chain_chain_user_delete() {
+
+}
+
+/* ------------------------------ *
+ * _chain_access_config_load()
+ * ------------------------------ */
+function dea_chain_chain_access_config_load() {
+
+}
+
+function dea_chain_chain_access_config_load_multiple() {
+
+}
+
+function dea_chain_chain_access_config_delete() {
+
+}
